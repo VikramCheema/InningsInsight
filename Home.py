@@ -42,7 +42,7 @@ st.divider()
 # --- NAVIGATION HUB ---
 st.subheader("Available Modules")
 
-col_a, col_b = st.columns(2)
+col_a, col_b, col_c = st.columns(3)
 
 with col_a:
     with st.container(border=True):
@@ -56,7 +56,12 @@ with col_b:
         st.markdown("### 📈 Player Trajectory")
         st.write("Career graphs, form analysis, and milestone tracking.")
         # UPDATED: Link to Player Trajectory
-        st.page_link("pages/2_Player_Trajectory.py", label="View Player Stats", icon="📊")
+        st.page_link("pages/2_Player_Trajectory.py", label="View Player Stats", icon="📈")
+with col_c:
+    with st.container(border=True):
+        st.markdown("### 📊 Player Comparison")
+        st.write("Comparison graphs, stats and analysis.")
+        st.page_link("pages/3_Player_Comparison.py", label = "Launch Player Comparison", icon = "📊")
 
 st.divider()
 st.caption("© 2026 InningsInsight AI | Powered by Streamlit")
