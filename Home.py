@@ -42,7 +42,7 @@ st.divider()
 # --- NAVIGATION HUB ---
 st.subheader("Available Modules")
 
-col_a, col_b, col_c = st.columns(3)
+col_a, col_b, col_c, col_d = st.columns(4)
 
 with col_a:
     with st.container(border=True):
@@ -62,6 +62,10 @@ with col_c:
         st.markdown("### 📊 Player Comparison")
         st.write("Comparison graphs, stats and analysis.")
         st.page_link("pages/3_Player_Comparison.py", label = "Launch Player Comparison", icon = "📊")
-
+with col_d:
+    with st.container(border=True):
+        st.markdown("### 🏆 Team Ranking")
+        st.write("Team ranking comparison, and net run-rate analysis.")
+        st.page_link("pages/4_Team_Ranking.py", label = "Launch Team Ranking", icon = "📊")
 st.divider()
 st.caption("© 2026 InningsInsight AI | Powered by Streamlit")
