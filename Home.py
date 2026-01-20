@@ -89,11 +89,11 @@ with row1_col3:
 
 # Row 2: Tournament & Teams (2 Columns, Centered)
 st.write("") # Spacer
-_, row2_col1, row2_col2, _ = st.columns([1, 3, 3, 1], gap="medium")
+row2_col1, row2_col2, row2_col3 = st.columns(3, gap="medium")
 
 with row2_col1:
     with st.container(border=True):
-        st.markdown("### 🌍 Global Rankings")
+        st.markdown("### 🌍 Team Rankings")
         st.write("Current team standings, rating trends, and historical dominance analysis.")
         st.page_link("pages/4_Team_Ranking.py", label="View Rankings", icon="🏆", use_container_width=True)
 
@@ -103,6 +103,11 @@ with row2_col2:
         st.write("Exclusive HQ for the 2026 tournament. Points table, NRR scenarios, and MVP race.")
         st.page_link("pages/5_World_Cup_2026.py", label="Enter Tournament Mode", icon="🔥", use_container_width=True)
 
+with row2_col3:
+    with st.container(border=True):
+        st.markdown("### 💪 Global Player Ranking")
+        st.write("Player's global ranking lists.")
+        st.page_link("pages/6_Global_Ranking.py", label="View Rankings", icon="🔥", use_container_width=True)
 # --- FOOTER ---
 st.divider()
 st.markdown(
