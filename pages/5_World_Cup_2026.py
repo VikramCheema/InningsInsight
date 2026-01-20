@@ -5,6 +5,90 @@ import plotly.express as px
 import os
 import numpy as np
 
+import streamlit.components.v1 as components
+
+def retro_metric(label, value, prefix="", suffix="", color="#FFD700"):
+    """
+    Robust version using Streamlit Components to guarantee JS execution.
+    """
+    # HTML/CSS/JS contained in a single string
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body {{
+            margin: 0;
+            padding: 0;
+            background-color: transparent; /* Transparent to blend with app */
+            font-family: 'Courier New', Courier, monospace;
+        }}
+        .scoreboard-card {{
+            background: linear-gradient(to bottom, #222, #333);
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            color: white;
+            height: 90px; /* Fixed height to fit component */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }}
+        .scoreboard-label {{
+            font-size: 14px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }}
+        .scoreboard-value {{
+            font-size: 28px;
+            font-weight: bold;
+            color: {color};
+            text-shadow: 0 0 10px {color}55;
+        }}
+    </style>
+    </head>
+    <body>
+        <div class="scoreboard-card">
+            <div class="scoreboard-label">{label}</div>
+            <div class="scoreboard-value">
+                {prefix}<span id="counter">0</span>{suffix}
+            </div>
+        </div>
+
+        <script>
+            const duration = 2000; // 2 seconds
+            const endValue = {value};
+            const obj = document.getElementById("counter");
+            
+            let startTimestamp = null;
+            const step = (timestamp) => {{
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const current = Math.floor(progress * endValue);
+                obj.innerHTML = current.toLocaleString();
+                
+                if (progress < 1) {{
+                    window.requestAnimationFrame(step);
+                }} else {{
+                    obj.innerHTML = endValue.toLocaleString();
+                }}
+            }};
+            window.requestAnimationFrame(step);
+        </script>
+    </body>
+    </html>
+    """
+    
+    # This creates the isolated iframe. 
+    # Height is manually set to ensure no scrollbars appear.
+    components.html(html_code, height=120, scrolling=False)
+
+
 # --- CONFIGURATION ---
 st.set_page_config(page_title="World Cup 2026 Headquarters", page_icon="🏆", layout="wide")
 MAX_OVERS = 10 
@@ -33,20 +117,51 @@ DB_FILE = get_db_path()
 
 # --- 2. FACTS ENGINE ---
 def get_tournament_facts():
-    """Fetches headline stats specifically for this tournament pattern"""
-    if not DB_FILE: return 0, 0, 0, 0
+    """Fetches expanded headline stats specifically for this tournament pattern"""
+    if not DB_FILE: return {}
+    
     conn = sqlite3.connect(DB_FILE)
+    facts = {}
+    
     try:
-        # Filter everything by TARGET_TOUR_PATTERN
-        m = pd.read_sql(f"SELECT count(DISTINCT Match_ID) as val FROM innings_summary WHERE Match_ID LIKE '{TARGET_TOUR_PATTERN}%'", conn).iloc[0]['val']
-        v = pd.read_sql(f"SELECT count(DISTINCT Venue) as val FROM innings_summary WHERE Match_ID LIKE '{TARGET_TOUR_PATTERN}%'", conn).iloc[0]['val']
-        f = pd.read_sql(f"SELECT count(*) as val FROM player_stats WHERE Match_ID LIKE '{TARGET_TOUR_PATTERN}%' AND Runs_Scored >= 50", conn).iloc[0]['val']
-        w = pd.read_sql(f"SELECT count(*) as val FROM player_stats WHERE Match_ID LIKE '{TARGET_TOUR_PATTERN}%' AND Wickets_Taken >= 3", conn).iloc[0]['val']
-        return m, v, f, w
-    except:
-        return 0, 0, 0, 0
+        # Base filter for MATCH_ID
+        match_filter = f"Match_ID LIKE '{TARGET_TOUR_PATTERN}%'"
+        
+        # 1. Basic Counts
+        facts['matches'] = pd.read_sql(f"SELECT count(DISTINCT Match_ID) FROM innings_summary WHERE {match_filter}", conn).iloc[0,0]
+        facts['venues'] = pd.read_sql(f"SELECT count(DISTINCT Venue) FROM innings_summary WHERE {match_filter}", conn).iloc[0,0]
+        
+        # 2. Batting Milestones
+        facts['fifties'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Runs_Scored >= 50", conn).iloc[0,0]
+        facts['ducks'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Runs_Scored = 0 AND Innings_Out = 1", conn).iloc[0,0]
+        
+        # 3. Bowling Milestones
+        facts['3w_hauls'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Wickets_Taken = 3", conn).iloc[0,0]
+        facts['4w_plus'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Wickets_Taken >= 4", conn).iloc[0,0]
+        
+        # 4. Team Stats
+        facts['sub_100'] = pd.read_sql(f"SELECT count(*) FROM innings_summary WHERE {match_filter} AND Total_Runs < 100", conn).iloc[0,0]
+        facts['all_outs'] = pd.read_sql(f"SELECT count(*) FROM innings_summary WHERE {match_filter} AND Total_Wickets_Lost = 10", conn).iloc[0,0]
+
+        # 5. Extras (FIXED: Using player_stats because innings_summary lacks the column)
+        # We sum up the extras given by every bowler in the tournament
+        try:
+            facts['extras'] = pd.read_sql(f"SELECT COALESCE(SUM(Extras_Given), 0) FROM player_stats WHERE {match_filter}", conn).iloc[0,0]
+        except:
+            facts['extras'] = 0
+
+        # 6. Dismissal Types
+        facts['bowled'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Dismissal_Type = 'Bowled'", conn).iloc[0,0]
+        facts['lbw'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Dismissal_Type = 'LBW'", conn).iloc[0,0]
+        facts['run_outs'] = pd.read_sql(f"SELECT count(*) FROM player_stats WHERE {match_filter} AND Dismissal_Type = 'Run Out'", conn).iloc[0,0]
+
+    except Exception as e:
+        print(f"Error fetching facts: {e}")
+        return {}
     finally:
         conn.close()
+        
+    return facts
 
 # --- 3. CALCULATION ENGINES ---
 
@@ -311,13 +426,40 @@ def app():
     st.title("🏆 World Cup 2026: Headquarters")
     if not DB_FILE: st.error("Database missing."); st.stop()
 
-    # --- TOURNAMENT FACTS (NEW) ---
-    m_count, v_count, f_count, w_count = get_tournament_facts()
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Matches Played", m_count)
-    c2.metric("Venues Used", v_count)
-    c3.metric("50+ Scores", f_count)
-    c4.metric("3-Wicket Hauls", w_count)
+    # --- TOURNAMENT FACTS (EXPANDED) ---
+    # --- TOURNAMENT FACTS (ANIMATED) ---
+    facts = get_tournament_facts()
+    
+    if facts:
+        # Define a gold color for that "Winner" vibe, or distinct colors for sections
+        gold = "#FFD700"
+        blue = "#00BFFF"
+        red  = "#FF4500"
+        
+        # Row 1: Tournament Overview
+        c1, c2, c3, c4 = st.columns(4)
+        with c1: retro_metric("Matches Played", facts.get('matches', 0), color=blue)
+        with c2: retro_metric("Venues Used", facts.get('venues', 0), color=blue)
+        with c3: retro_metric("Total Extras", int(facts.get('extras', 0)), color=blue)
+        with c4: retro_metric("Teams All Out", facts.get('all_outs', 0), color=red)
+        
+        # Row 2: Performance Milestones
+        c5, c6, c7, c8 = st.columns(4)
+        with c5: retro_metric("50+ Scores", facts.get('fifties', 0), color=gold)
+        with c6: retro_metric("Ducks 🦆", facts.get('ducks', 0), color=gold)
+        with c7: retro_metric("3-Wicket Hauls", facts.get('3w_hauls', 0), color=gold)
+        with c8: retro_metric("4+ Wicket Hauls", facts.get('4w_plus', 0), color=gold)
+
+        # Row 3: Dismissals & Low Scores
+        c9, c10, c11, c12 = st.columns(4)
+        with c9: retro_metric("Scores < 100", facts.get('sub_100', 0), color=red)
+        with c10: retro_metric("Bowled 🎯", facts.get('bowled', 0), color=red)
+        with c11: retro_metric("LBW 🦵", facts.get('lbw', 0), color=red)
+        with c12: retro_metric("Run Outs 🏃", facts.get('run_outs', 0), color=red)
+        
+    else:
+        st.warning("Could not load tournament facts.")
+        
     st.divider()
 
     # --- TABS ---
