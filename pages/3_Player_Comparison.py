@@ -311,8 +311,9 @@ def app():
 
         # Stats Table
         st.subheader("📋 Head-to-Head Stats")
-        cols_show = ['Player_Name', 'Matches', 'Runs', 'HS', 'Bat_Avg', 'SR', 'MoM', 'Wickets', 'Best_Bowl', 'Bowl_Avg', 'Econ']
-        st.dataframe(df[cols_show].style.highlight_max(axis=0, color='#1f4e3d', subset=['Runs','Bat_Avg','SR','Wickets']), use_container_width=True, hide_index=True)
+        cols_show = ['Player_Name', 'Matches', 'Runs', 'HS', 'Bat_Avg', 'SR', 'MoM', 'Wickets', 'Best_Bowl', 'Bowl_Avg', 'Econ'];df_display = df[cols_show].rename(columns={'Bat_Avg': 'BA','Best_Bowl': 'Best Bowl','Bowl_Avg': 'Bowl Avg'})
+        format_dict = {'BA':"{:.1f}",'SR':"{:.1f}",'Bowl Avg':"{:.1f}",'Econ':"{:.1f}" }
+        st.dataframe(df_display.style.format(format_dict).highlight_max(axis=0, color='#1f4e3d', subset=['Runs','BA','SR','Wickets']), use_container_width=True, hide_index=True)
         st.divider()
 
         # 3. Visuals

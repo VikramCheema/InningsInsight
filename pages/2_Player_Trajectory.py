@@ -313,7 +313,7 @@ def plot_batting_impact(stats_df):
     ax2 = axes[0, 1]; ax2.grid(False); colors = [COLOR_WON if idx == 'Won' else COLOR_LOST for idx in indices]
     bars = ax2.bar(indices, plot_data['Runs_Scored'], color=colors, alpha=0.85); ax2.set_title("Runs", color='white')
     for bar in bars: ax2.text(bar.get_x()+bar.get_width()/2, bar.get_height(), f"{int(bar.get_height())}", ha='center', va='bottom', color='white')
-    ax3 = axes[1, 0]; milestones = plot_data[['Count_30s', 'Count_50s', 'Is_MoM']].T; milestones.plot(kind='bar', ax=ax3, color=[COLOR_WON, COLOR_LOST], width=0.7, alpha=0.9); ax3.set_title("Milestones", color='white'); ax3.legend(['Won', 'Lost'], fontsize=8)
+    ax3 = axes[1, 0]; milestones = plot_data[['Count_30s', 'Count_50s', 'Is_MoM']].T; milestones.plot(kind='bar', ax=ax3, color=[COLOR_WON, COLOR_LOST], width=0.7, alpha=0.9); ax3.set_title("Milestones", color='white'); ax3.legend(['Won', 'Lost'], fontsize=8);ax3.set_xticklabels(['30s', '50s', 'MoM'], color='white');ax3.tick_params(axis='x', labelrotation=0)
     ax4 = axes[1, 1]; total = plot_data['Runs_Scored'].sum()
     if total > 0: ax4.pie([plot_data.loc['Won', 'Runs_Scored'], plot_data.loc['Lost', 'Runs_Scored']], labels=[f"W\n{int(plot_data.loc['Won', 'Runs_Scored'])}", f"L\n{int(plot_data.loc['Lost', 'Runs_Scored'])}"], autopct='%1.0f%%', colors=[COLOR_WON, COLOR_LOST], explode=(0.05, 0)); ax4.add_artist(plt.Circle((0,0), 0.65, fc='#0E1117'))
     ax4.set_title("Split", color='white'); plt.tight_layout()
@@ -331,7 +331,7 @@ def plot_bowling_impact(stats_df):
     bars = ax2.bar(indices, plot_data['Wickets_Taken'], color=colors, alpha=0.85); ax2.set_title("Wickets", color='white')
     for bar in bars: ax2.text(bar.get_x()+bar.get_width()/2, bar.get_height(), f"{int(bar.get_height())}", ha='center', va='bottom', color='white')
     # MODIFIED: Removed '4W+' here
-    ax3 = axes[1, 0]; hauls = plot_data[['3W+', '5W+', 'MoM']].T; hauls.plot(kind='bar', ax=ax3, color=[COLOR_WON, COLOR_LOST], width=0.7, alpha=0.9); ax3.set_title("Hauls & Awards", color='white'); ax3.legend(['Won', 'Lost'], fontsize=8); ax3.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax3 = axes[1, 0]; hauls = plot_data[['3W+', '5W+', 'MoM']].T; hauls.plot(kind='bar', ax=ax3, color=[COLOR_WON, COLOR_LOST], width=0.7, alpha=0.9); ax3.set_title("Hauls & Awards", color='white'); ax3.legend(['Won', 'Lost'], fontsize=8); ax3.yaxis.set_major_locator(MaxNLocator(integer=True));ax3.tick_params(axis= 'x', labelrotation = 0)
     ax4 = axes[1, 1]; total = plot_data['Wickets_Taken'].sum()
     if total > 0: ax4.pie([plot_data.loc['Won', 'Wickets_Taken'], plot_data.loc['Lost', 'Wickets_Taken']], labels=[f"W\n{int(plot_data.loc['Won', 'Wickets_Taken'])}", f"L\n{int(plot_data.loc['Lost', 'Wickets_Taken'])}"], autopct='%1.0f%%', colors=[COLOR_WON, COLOR_LOST], explode=(0.05, 0)); ax4.add_artist(plt.Circle((0,0), 0.65, fc='#0E1117'))
     ax4.set_title("Split", color='white'); plt.tight_layout()
@@ -407,8 +407,8 @@ def app():
                 df['MA_Runs'] = df['Runs_Scored'].rolling(5).mean()
                 df['MA_Wkts'] = df['Wickets_Taken'].rolling(5).mean()
                 base = alt.Chart(df.reset_index()).encode(x=alt.X('index', title='Timeline'))
-                chart_bat = (base.mark_bar(color='#4CAF50').encode(y='Runs_Scored', tooltip=['Runs_Scored']) + base.mark_line(color='red').encode(y='MA_Runs')).properties(title="Batting Arc")
-                chart_bowl = (base.mark_bar(color='#2196F3').encode(y='Wickets_Taken', tooltip=['Wickets_Taken']) + base.mark_line(color='orange').encode(y='MA_Wkts')).properties(title="Bowling Arc")
+                chart_bat = (base.mark_bar(color='#4CAF50').encode(y=alt.Y('Runs_Scored',title= 'Runs Scored'), tooltip=['Runs_Scored']) + base.mark_line(color='red').encode(y='MA_Runs')).properties(title="Batting Arc")
+                chart_bowl = (base.mark_bar(color='#2196F3').encode(y=alt.Y('Wickets_Taken', title = 'Wickets Taken'), tooltip=['Wickets_Taken']) + base.mark_line(color='orange').encode(y='MA_Wkts')).properties(title="Bowling Arc")
                 if show_bat_first:
                     st.altair_chart(chart_bat.interactive(), use_container_width=True); st.altair_chart(chart_bowl.interactive(), use_container_width=True)
                 else:
@@ -472,8 +472,8 @@ def app():
             # TAB 4: OPPONENTS
             with tabs[3]:
                 opp_grp = df.groupby('Opposition').agg({'Match_ID':'count', 'Runs_Scored':'sum', 'Wickets_Taken':'sum'}).reset_index()
-                c1 = alt.Chart(opp_grp).mark_bar(color='#4CAF50').encode(x=alt.X('Opposition', sort='-y'), y='Runs_Scored', tooltip=['Opposition', 'Runs_Scored']).properties(title="Runs Scored").interactive()
-                c2 = alt.Chart(opp_grp).mark_bar(color='#2196F3').encode(x=alt.X('Opposition', sort='-y'), y='Wickets_Taken', tooltip=['Opposition', 'Wickets_Taken']).properties(title="Wickets Taken").interactive()
+                c1 = alt.Chart(opp_grp).mark_bar(color='#4CAF50').encode(x=alt.X('Opposition', sort='-y'), y=alt.Y('Runs_Scored', title = 'Runs Scored'), tooltip=['Opposition', 'Runs_Scored']).properties(title="Runs Scored").interactive()
+                c2 = alt.Chart(opp_grp).mark_bar(color='#2196F3').encode(x=alt.X('Opposition', sort='-y'), y=alt.Y('Wickets_Taken',title = 'Wickets Taken'), tooltip=['Opposition', 'Wickets_Taken']).properties(title="Wickets Taken").interactive()
                 if show_bat_first: st.altair_chart(c1, use_container_width=True); st.altair_chart(c2, use_container_width=True)
                 else: st.altair_chart(c2, use_container_width=True); st.altair_chart(c1, use_container_width=True)
 

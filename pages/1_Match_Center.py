@@ -284,17 +284,15 @@ def app():
             ba, bo = get_star_performers(team_a, team_b)
             c1.markdown(f"**{team_a} Key Players**")
             
-            if not ba.empty: c1.dataframe(ba[['Player_Name', 'Runs', 'HS', 'Avg', 'MoM']], hide_index=True)
-            # UPDATED: Added MoM to display
-            if not bo.empty: c1.dataframe(bo[['Player_Name', 'Wkts', 'BA', 'SR', 'MoM']], hide_index=True)
+            if not ba.empty: c1.dataframe(ba[['Player_Name', 'Runs', 'HS', 'Avg', 'MoM']].rename(columns = {'Player_Name':'Player'}), hide_index=True)
+            if not bo.empty: c1.dataframe(bo[['Player_Name', 'Wkts', 'BA', 'SR', 'MoM']].rename(columns = {'Player_Name':'Player'}), hide_index=True)
             
             # Team B Stars
             bb, bbo = get_star_performers(team_b, team_a)
             c2.markdown(f"**{team_b} Key Players**")
             
-            if not bb.empty: c2.dataframe(bb[['Player_Name', 'Runs', 'HS', 'Avg', 'MoM']], hide_index=True)
-            # UPDATED: Added MoM to display
-            if not bbo.empty: c2.dataframe(bbo[['Player_Name', 'Wkts', 'BA', 'SR', 'MoM']], hide_index=True)
+            if not bb.empty: c2.dataframe(bb[['Player_Name', 'Runs', 'HS', 'Avg', 'MoM']].rename(columns = {'Player_Name':'Player'}), hide_index=True)
+            if not bbo.empty: c2.dataframe(bbo[['Player_Name', 'Wkts', 'BA', 'SR', 'MoM']].rename(columns = {'Player_Name':'Player'}), hide_index=True)
             
         with t2:
             c1, c2 = st.columns(2)

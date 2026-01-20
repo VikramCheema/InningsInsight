@@ -215,6 +215,7 @@ def plot_history(df, team):
     color_rank = '#00ffcc'
     sns.lineplot(data=df, x='Match_Num', y='Rank', color=color_rank, lw=3, marker='o', ax=ax1)
     ax1.set_ylabel("Global Rank", color=color_rank, fontweight='bold'); ax1.tick_params(axis='y', colors=color_rank)
+    ax1.set_xlabel("Global T10 Matches")
     ax1.invert_yaxis(); ax1.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     ax1.set_ylim([df['Rank'].max()+1, 0.5])
 
@@ -241,7 +242,7 @@ def app():
 
     tab1, tab2 = st.tabs(["📊 Points Table & Form", "📈 Team Trajectory"])
     with tab1:
-        st.dataframe(df_rank[['Rank', 'Team', 'Mat', 'Won', 'Lost', 'Pts', 'NRR', 'Win_Streak', 'Loss_Streak']].style.format({'NRR': "{:+.3f}"}).highlight_max(subset=['Pts', 'NRR'], color='#1f4e3d'), use_container_width=True, hide_index=True)
+        st.dataframe(df_rank[['Rank', 'Team', 'Mat', 'Won', 'Lost', 'Pts', 'NRR', 'Win_Streak', 'Loss_Streak']].rename(columns ={'Win_Streak': 'Win Streak','Loss_Streak': 'Loss Streak'}).style.format({'NRR': "{:+.3f}"}).highlight_max(subset=['Pts', 'NRR'], color='#1f4e3d'), use_container_width=True, hide_index=True)
         st.divider()
         st.subheader("🔥 Form Guide (Last 15 Matches)")
         plot_form_guide(df_rank)
