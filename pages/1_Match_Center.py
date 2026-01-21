@@ -38,6 +38,47 @@ def is_same_team(name1, name2):
     if alias_n2 == n1: return True
     return False
 
+# --- FLAG URLS (Hosted Publicly) ---
+# --- LOCAL ASSETS CONFIGURATION ---
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+import base64
+def get_base64_image(team_name):
+    """
+    Tries to find a local image file for the team and converts it to a 
+    Base64 string that can be embedded in HTML.
+    """
+    # 1. Normalize the name (Handle aliases like 'IND' -> 'India')
+    full_name = TEAM_ALIASES.get(team_name.upper(), team_name)
+    
+    # 2. Construct the file path (Assuming .png files, check extensions!)
+    # You might want to check for .svg or .jpg too if you mix formats
+    file_path = os.path.join(ASSETS_DIR, f"{full_name}.png")
+    
+    # 3. Check if file exists
+    if not os.path.exists(file_path):
+        # Fallback: Return a transparent pixel or default icon if file missing
+        # This prevents the "broken image" icon
+        return "https://cdn-icons-png.flaticon.com/512/1165/1165249.png"
+    
+    # 4. Read and Encode
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+            encoded = base64.b64encode(data).decode()
+        
+        # Determine mime type (rudimentary check)
+        ext = file_path.split('.')[-1].lower()
+        mime_type = f"image/{ext}" if ext != 'svg' else 'image/svg+xml'
+        
+        return f"data:{mime_type};base64,{encoded}"
+    except Exception as e:
+        st.error(f"Error loading image for {team_name}: {e}")
+        return ""
+
+# Update the helper to use the local function
+def get_flag_url(team_name):
+    return get_base64_image(team_name)
+
 # --- 3. DATABASE HELPERS ---
 def run_query(query, params=None):
     if not os.path.exists(DB_FILE):
@@ -166,6 +207,60 @@ def get_h2h_rivalry(team_a, team_b):
 
     return stats
 
+def get_recent_h2h_matches(team_a, team_b, limit=5):
+    """
+    Fetches the last N matches between the two teams.
+    Assumes higher Match_ID = More recent match.
+    """
+    # 1. Get all matches involving these teams
+    query = f"""
+    SELECT DISTINCT Match_ID, Venue, Winner
+    FROM innings_summary
+    """
+    df_all = run_query(query)
+    
+    if df_all.empty: return []
+
+    history = []
+    
+    # Filter for matches where BOTH teams played
+    # We have to group by Match_ID to ensure both teams are present in that ID
+    # Since the query above is summary, we need to check team presence differently 
+    # or rely on a more robust join.
+    # robust approach based on your current schema:
+    
+    match_ids = df_all['Match_ID'].unique()
+    
+    # Optimization: We check existence via the player_stats or innings table
+    # But to keep it simple with your current structure, let's query specific match IDs
+    # where both teams appear in innings_summary
+    
+    q_check = f"""
+    SELECT Match_ID, Team_Name FROM innings_summary
+    """
+    df_teams = run_query(q_check)
+    
+    valid_matches = []
+    for mid, group in df_teams.groupby("Match_ID"):
+        teams_in_match = group['Team_Name'].tolist()
+        if len(teams_in_match) < 2: continue
+        
+        has_a = any(is_same_team(t, team_a) for t in teams_in_match)
+        has_b = any(is_same_team(t, team_b) for t in teams_in_match)
+        
+        if has_a and has_b:
+            # Find the winner for this match
+            row = df_all[df_all['Match_ID'] == mid].iloc[0]
+            valid_matches.append({
+                'Match_ID': mid,
+                'Venue': row['Venue'],
+                'Winner': row['Winner']
+            })
+            
+    # Sort by Match_ID descending (Newest first)
+    valid_matches.sort(key=lambda x: x['Match_ID'], reverse=True)
+    return valid_matches[:limit]
+
 def get_star_performers(team, opp):
     t_alias = TEAM_ALIASES.get(team, team)
     o_alias = TEAM_ALIASES.get(opp, opp)
@@ -207,6 +302,146 @@ def get_bunny_alert(bat_team, bowl_team):
     ORDER BY Count DESC LIMIT 5
     """
     return run_query(query)
+
+def render_timeline(matches, team_a, team_b):
+    if not matches:
+        return
+
+    st.markdown("""
+    <style>
+        .timeline-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding: 10px 5px;
+            gap: 12px;
+            font-family: sans-serif;
+            scrollbar-width: thin; /* Firefox */
+        }
+        /* Custom Scrollbar for Webkit */
+        .timeline-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .timeline-container::-webkit-scrollbar-thumb {
+            background-color: #444;
+            border-radius: 4px;
+        }
+        
+        .match-card {
+            background: #262730; /* Streamlit dark grey */
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 130px;
+            max-width: 130px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            border: 1px solid #444;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .match-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            border-color: #666;
+        }
+        
+        /* The Flag Image */
+        .flag-img {
+            width: 48px;
+            height: 32px;
+            object-fit: cover; /* Ensures flag fills the box */
+            border-radius: 4px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid #555;
+        }
+        
+        .winner-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-align: center;
+            color: #eee;
+        }
+        .venue-text {
+            font-size: 0.7rem;
+            color: #aaa;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+        .match-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #444;
+            width: 100%;
+            text-align: center;
+            padding-bottom: 4px;
+        }
+        
+        /* Winner Highlights */
+        .glow-green { border: 1px solid #2ecc71; box-shadow: 0 0 8px rgba(46, 204, 113, 0.2); }
+        .glow-orange { border: 1px solid #e67e22; box-shadow: 0 0 8px rgba(230, 126, 34, 0.2); }
+        
+        .arrow {
+            font-size: 1.2rem;
+            color: #555;
+            font-weight: bold;
+            user-select: none;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    html_content = '<div class="timeline-container">'
+    
+    for i, m in enumerate(matches):
+        winner = m['Winner']
+        venue = m['Venue']
+        
+        # Get Flag
+        flag_url = get_flag_url(winner)
+        
+        # Determine styling based on winner
+        # Team A gets Green Glow, Team B gets Orange Glow
+        if is_same_team(winner, team_a):
+            glow_class = "glow-green"
+            display_name = team_a
+        elif is_same_team(winner, team_b):
+            glow_class = "glow-orange"
+            display_name = team_b
+        else:
+            glow_class = ""
+            display_name = "DRAW"
+
+        label = "LATEST" if i == 0 else f"MATCH -{i}"
+
+        card_html = f"""
+        <div class="match-card {glow_class}">
+            <div class="match-label">{label}</div>
+            <img src="{flag_url}" class="flag-img" onerror="this.style.display='none'">
+            <div class="winner-name">{display_name}</div>
+            <div class="venue-text" title="{venue}">{venue}</div>
+        </div>
+        """
+        
+        html_content += card_html
+        
+        # Add arrow if not the last item
+        if i < len(matches) - 1:
+            html_content += '<div class="arrow">←</div>'
+
+    html_content += '</div>'
+    
+    st.markdown(html_content, unsafe_allow_html=True)
 
 # --- UI LAYOUT ---
 def app():
@@ -256,19 +491,34 @@ def app():
 
         # H2H RIVALRY
         st.subheader("⚔️ Head-to-Head")
+        
+        # 1. Fetch Data
         h = get_h2h_rivalry(team_a, team_b)
+        # --- MISSING LINE ADDED BELOW ---
+        recent_matches = get_recent_h2h_matches(team_a, team_b) 
         
         if h and h['total'] > 0:
+            # --- NEW: RENDER TIMELINE ---
+            st.markdown("**Recent Form:**")
+            render_timeline(recent_matches, team_a, team_b)
+            st.write("") # Spacer
+            # -----------------------------
+
             st.write(f"**Total Matches:** {h['total']}")
             c1, c2 = st.columns(2)
             a_pct = (h['a_wins'] / h['total']) * 100
             b_pct = (h['b_wins'] / h['total']) * 100
+            
+            # Using progress bars for better visuals
             c1.metric(f"{team_a} Wins", f"{h['a_wins']} ({a_pct:.0f}%)")
+            c1.progress(min(a_pct / 100, 1.0))
+            
             c2.metric(f"{team_b} Wins", f"{h['b_wins']} ({b_pct:.0f}%)")
+            c2.progress(min(b_pct / 100, 1.0))
             
             sorted_venues = sorted(h['venues'].items(), key=lambda x: x[1], reverse=True)
             venue_str = ", ".join([f"{v} ({c})" for v, c in sorted_venues[:5]])
-            st.caption(f"**Played At:** {venue_str}")
+            st.caption(f"**Top Battlegrounds:** {venue_str}")
         else:
             st.warning("No Head-to-Head history found.")
 
