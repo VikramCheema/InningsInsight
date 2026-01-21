@@ -6,17 +6,13 @@ import os
 st.set_page_config(
     page_title="InningsInsight",
     page_icon="🏏",
-    layout="wide",  # Changed to wide for better dashboard feel
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # --- ASSET LOADING ---
-# Robust path handling compatible with different OS
 current_dir = os.path.dirname(os.path.abspath(__file__))
-logo_path = os.path.join(current_dir, "assets", "logo.png") # Assuming you might put images in an assets folder
-if not os.path.exists(logo_path):
-    # Fallback to current dir if assets folder doesn't exist
-    logo_path = os.path.join(current_dir, "logo.png")
+logo_path = os.path.join(current_dir, "assets", "logo.png")
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -34,7 +30,7 @@ st.markdown("""
         font-size: 1.2rem;
         color: #666;
     }
-    /* Hover effect for containers (subtle) */
+    /* Hover effect for containers */
     div[data-testid="stContainer"] {
         transition: transform 0.2s;
     }
@@ -48,7 +44,6 @@ with col_M:
     if os.path.exists(logo_path):
         st.image(logo_path, use_container_width=True)
     else:
-        # Fallback emoji if logo missing
         st.markdown("<h1 style='text-align: center; font-size: 5rem;'>🏏</h1>", unsafe_allow_html=True)
 
 st.markdown(
@@ -66,7 +61,7 @@ st.divider()
 # --- NAVIGATION GRID ---
 st.subheader("📍 Dashboard Modules")
 
-# Row 1: The Core Analytics (3 Columns)
+# Row 1: The Core Analytics
 row1_col1, row1_col2, row1_col3 = st.columns(3, gap="medium")
 
 with row1_col1:
@@ -87,7 +82,7 @@ with row1_col3:
         st.write("Head-to-head stat comparisons across different phases of play and opposition.")
         st.page_link("pages/3_Player_Comparison.py", label="Compare Players", icon="🆚", use_container_width=True)
 
-# Row 2: Tournament & Teams (2 Columns, Centered)
+# Row 2: Tournament & Rankings
 st.write("") # Spacer
 row2_col1, row2_col2, row2_col3 = st.columns(3, gap="medium")
 
@@ -106,8 +101,22 @@ with row2_col2:
 with row2_col3:
     with st.container(border=True):
         st.markdown("### 💪 Global Player Ranking")
-        st.write("Player's global ranking lists.")
-        st.page_link("pages/6_Global_Ranking.py", label="View Rankings", icon="🔥", use_container_width=True)
+        st.write("Complete ICC player ranking lists across all formats and disciplines.")
+        st.page_link("pages/6_Global_Ranking.py", label="View Rankings", icon="📊", use_container_width=True)
+
+# Row 3: Venue Intelligence (New Section)
+st.write("") # Spacer
+row3_col1, row3_col2, row3_col3 = st.columns(3, gap="medium")
+
+# Placing Venue Atlas in the center column for visibility
+with row3_col2:
+    with st.container(border=True):
+        st.markdown("### 🏟️ Venue Atlas")
+        st.write("Interactive global map with stadium stats, pitch history, and host intelligence.")
+        # Ensure the filename here matches exactly what you created (Venue_Analysis.py)
+        st.page_link("pages/7_Venues.py", label="Explore Venues", icon="🗺️", use_container_width=True)
+
+
 # --- FOOTER ---
 st.divider()
 st.markdown(
