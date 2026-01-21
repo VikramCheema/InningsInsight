@@ -5,3 +5,4 @@ seaborn
 Pillow
 plotly
 folium
+streamlit-folium
