@@ -41,7 +41,8 @@ def get_llm():
         st.stop()
         
     return ChatGroq(
-        model="llama-3.3-70b-versatile",
+        # model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         api_key=GROQ_API_KEY,
         temperature=0.0, # Zero temperature for strict SQL generation
         stop_sequences=[";"]
@@ -162,4 +163,8 @@ if st.button("Run Analysis", type="primary"):
                             st.bar_chart(df.set_index(cat_cols[0]))
                             
             except Exception as e:
-                st.error(f"Analysis failed. Error details:\n{e}")
+                error_msg = str(e)
+                if "429" in error_msg and "Rate limit" in error_msg:
+                    st.warning("⚠️ Daily Usage Limit Reached. Please wait a few minutes or switch models.")
+                else:
+                    st.error(f"Analysis failed. Error details:\n{e}")
