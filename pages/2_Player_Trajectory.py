@@ -699,12 +699,46 @@ def app():
 
             # TAB 4: OPPONENTS
             with tabs[3]:
-                opp_grp = df.groupby('Opposition').agg({'Match_ID':'count', 'Runs_Scored':'sum', 'Wickets_Taken':'sum'}).reset_index()
-                c1 = alt.Chart(opp_grp).mark_bar(color='#4CAF50').encode(x=alt.X('Opposition', sort='-y'), y=alt.Y('Runs_Scored', title = 'Runs Scored'), tooltip=['Opposition', 'Runs_Scored']).properties(title="Runs Scored").interactive()
-                c2 = alt.Chart(opp_grp).mark_bar(color='#2196F3').encode(x=alt.X('Opposition', sort='-y'), y=alt.Y('Wickets_Taken',title = 'Wickets Taken'), tooltip=['Opposition', 'Wickets_Taken']).properties(title="Wickets Taken").interactive()
-                if show_bat_first: st.altair_chart(c1, use_container_width=True); st.altair_chart(c2, use_container_width=True)
-                else: st.altair_chart(c2, use_container_width=True); st.altair_chart(c1, use_container_width=True)
+                # --- PREPARE DATA ---
+                
+                # 1. Batting Stats
+                bat_opp = df.groupby('Opposition').agg({'Runs_Scored': 'sum','Balls_Faced': 'sum','Innings_Out': 'sum','Match_ID': 'count'}).reset_index()
 
+                # Calculate Batting Metrics
+                bat_opp['Bat_Avg'] = bat_opp.apply(lambda x: x['Runs_Scored'] / x['Innings_Out'] if x['Innings_Out'] > 0 else x['Runs_Scored'], axis=1)
+                bat_opp['Bat_SR'] = bat_opp.apply(lambda x: (x['Runs_Scored'] / x['Balls_Faced'] * 100) if x['Balls_Faced'] > 0 else 0, axis=1)
+                
+                # Create Display Label (e.g., "450 | Avg: 55.2 | SR: 140")
+                bat_opp['Label'] = bat_opp.apply(lambda x: f"{int(x['Runs_Scored'])}  |  Avg: {x['Bat_Avg']:.1f}  |  SR: {x['Bat_SR']:.0f}", axis=1)
+
+                # 2. Bowling Stats
+                bowl_opp = df.groupby('Opposition').agg({'Wickets_Taken': 'sum','Runs_Conceded': 'sum','Total_Balls_Bowled': 'sum','Match_ID': 'count'}).reset_index()
+
+                # Calculate Bowling Metrics
+                bowl_opp['Bowl_Avg'] = bowl_opp.apply(lambda x: x['Runs_Conceded'] / x['Wickets_Taken'] if x['Wickets_Taken'] > 0 else 0, axis=1)
+                bowl_opp['Bowl_SR'] = bowl_opp.apply(lambda x: x['Total_Balls_Bowled'] / x['Wickets_Taken'] if x['Wickets_Taken'] > 0 else 0, axis=1)
+                
+                # Create Display Label
+                bowl_opp['Label'] = bowl_opp.apply(lambda x: f"{int(x['Wickets_Taken'])}  |  Avg: {x['Bowl_Avg']:.1f}  |  SR: {x['Bowl_SR']:.1f}", axis=1)
+
+                # --- VISUALIZATION (Horizontal Bars for Readability) ---
+                
+                # BATTING CHART
+                b_base = alt.Chart(bat_opp).encode(y=alt.Y('Opposition', sort='-x', title=None),x=alt.X('Runs_Scored', title='Runs Scored'));b_bars = b_base.mark_bar(color='#4CAF50').encode(tooltip=['Opposition', 'Runs_Scored', alt.Tooltip('Bat_Avg', format='.1f'), alt.Tooltip('Bat_SR', format='.1f')]);b_text = b_base.mark_text(align='left', dx=5, color='white').encode(text='Label');chart_bat_opp = (b_bars + b_text).properties(title="BATTING Performance vs Opponents")
+
+                # BOWLING CHART
+                w_base = alt.Chart(bowl_opp).encode(y=alt.Y('Opposition', sort='-x', title=None),x=alt.X('Wickets_Taken', title='Wickets Taken'));w_bars = w_base.mark_bar(color='#2196F3').encode(tooltip=['Opposition', 'Wickets_Taken', alt.Tooltip('Bowl_Avg', format='.1f'), alt.Tooltip('Bowl_SR', format='.1f')]);w_text = w_base.mark_text(align='left', dx=5, color='white').encode(text='Label');chart_bowl_opp = (w_bars + w_text).properties(title="BOWLING Performance vs Opponents")
+
+                # --- RENDER ---
+                # We use container width but add padding for the text labels
+                if show_bat_first:
+                    st.altair_chart(chart_bat_opp, use_container_width=True)
+                    st.divider()
+                    st.altair_chart(chart_bowl_opp, use_container_width=True)
+                else:
+                    st.altair_chart(chart_bowl_opp, use_container_width=True)
+                    st.divider()
+                    st.altair_chart(chart_bat_opp, use_container_width=True)
             # TAB 5: TOURNAMENTS
             with tabs[4]:
                 st.markdown("#### 🏏 Batting"); fig_bat, df_bat = plot_batting_tournaments(df); st.pyplot(fig_bat)
