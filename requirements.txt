@@ -6,7 +6,7 @@ Pillow
 plotly
 folium
 streamlit-folium
-longchain
-longchain-community
-longchain-groq
 sqlalchemy
+langchain
+langchain-community
+langchain-groq
