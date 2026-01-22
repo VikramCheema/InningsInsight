@@ -336,6 +336,116 @@ def plot_bowling_impact(stats_df):
     if total > 0: ax4.pie([plot_data.loc['Won', 'Wickets_Taken'], plot_data.loc['Lost', 'Wickets_Taken']], labels=[f"W\n{int(plot_data.loc['Won', 'Wickets_Taken'])}", f"L\n{int(plot_data.loc['Lost', 'Wickets_Taken'])}"], autopct='%1.0f%%', colors=[COLOR_WON, COLOR_LOST], explode=(0.05, 0)); ax4.add_artist(plt.Circle((0,0), 0.65, fc='#0E1117'))
     ax4.set_title("Split", color='white'); plt.tight_layout()
     return fig
+# --- HELPER: ADVANCED CHART DATA PROCESSING ---
+
+def process_batting_data(df):
+    if df.empty: return df
+    df = df.sort_values("Match_ID").copy()
+    
+    # 1. Match Numbering
+    df['Match_Number'] = range(1, len(df) + 1)
+    
+    # 2. HYBRID "Did Not Bat" (NB) Check
+    # We check BOTH the DB column AND the stats to be 100% sure.
+    # Condition A: Your DB says they didn't play the inning
+    cond_db = (pd.to_numeric(df['Innings_Played'], errors='coerce').fillna(1) == 0)
+    
+    # Condition B: Heuristic (0 Runs, 0 Balls, No Dismissal Info)
+    # This catches cases where Innings_Played might be 1 but they never batted.
+    cond_stats = ((df['Runs_Scored'] == 0) & 
+                  (df['Balls_Faced'] == 0) & 
+                  (df['Dismissal_Type'].isna() | (df['Dismissal_Type'].astype(str).str.strip() == "")))
+    
+    df['Is_NB'] = (cond_db | cond_stats)
+
+    # 3. Cumulative Stats
+    df['Total Runs Scored'] = df['Runs_Scored'].cumsum()
+    
+    # Divisor: Only count innings where they were OUT
+    # Standard Batting Avg = Total Runs / Times Out
+    # We use 'Not_Out_Innings' (1=Not Out, 0=Out)
+    # If Is_NB is True, we treat it as Not Out (doesn't increment divisor)
+    
+    # Calculate if this specific inning counts as a dismissal
+    df['Is_Dismissal'] = np.where(df['Is_NB'], 0, (1 - df['Not_Out_Innings']))
+    df['CumOuts'] = df['Is_Dismissal'].cumsum()
+    
+    # Batting Average
+    df['Batting Average'] = df.apply(
+        lambda x: x['Total Runs Scored'] / x['CumOuts'] if x['CumOuts'] > 0 else x['Total Runs Scored'], axis=1
+    )
+    
+    # 4. Rolling Average (Skip NB)
+    df['Runs_For_Rolling'] = np.where(df['Is_NB'], np.nan, df['Runs_Scored'])
+    df['Rolling_Avg'] = df['Runs_For_Rolling'].rolling(window=10, min_periods=1).mean()
+    
+    # 5. Visualization Helpers
+    def get_bat_props(row):
+        # Case A: Did Not Bat
+        if row['Is_NB']: 
+            return pd.Series(["NB", "Gray"])
+        
+        val = int(row['Runs_Scored'])
+        is_not_out = (row['Not_Out_Innings'] == 1)
+        
+        # Label: Add * if Not Out
+        label = f"{val}*" if is_not_out else str(val)
+        
+        # Color Logic
+        if val >= 100: 
+            color = 'Century' # Pink/Red
+        elif val >= 50: 
+            color = 'Fifty'   # Yellow
+        elif val == 0 and not is_not_out: 
+            color = 'Duck'    # RED (Only if actually OUT)
+        elif val == 0 and is_not_out:
+            color = 'Normal'  # Teal (0* is not a duck)
+        else: 
+            color = 'Normal'  # Teal
+            
+        return pd.Series([label, color])
+
+    df[['Bar_Label', 'Form_Color']] = df.apply(get_bat_props, axis=1)
+    df['MoM_Marker'] = df['Is_MoM'].apply(lambda x: "★" if x == 1 else "")
+    
+    return df
+
+def process_bowling_data(df):
+    if df.empty: return df
+    df = df.sort_values("Match_ID").copy()
+    
+    df['Match_Number'] = range(1, len(df) + 1)
+    df['Is_NB'] = (df['Total_Balls_Bowled'] == 0)
+
+    if 'Runs_Conceded' not in df.columns: df['Runs_Conceded'] = 0
+    
+    df['Total Wickets Taken'] = df['Wickets_Taken'].cumsum()
+    df['CumRunsConceded'] = df['Runs_Conceded'].cumsum()
+    
+    df['Bowling Average'] = df.apply(
+        lambda x: x['CumRunsConceded'] / x['Total Wickets Taken'] if x['Total Wickets Taken'] > 0 else None, axis=1
+    )
+    
+    df['Wkts_For_Rolling'] = np.where(df['Is_NB'], np.nan, df['Wickets_Taken'])
+    df['Rolling_Wkts'] = df['Wkts_For_Rolling'].rolling(window=10, min_periods=1).mean()
+    
+    def get_bowl_props(row):
+        if row['Is_NB']: return pd.Series(["NB", "DidNotBowl"])
+        
+        w = int(row['Wickets_Taken'])
+        label = str(w)
+        
+        if w >= 5: color = '5-Fer'
+        elif w >= 3: color = '3-Fer'
+        elif w == 0: color = 'Wicketless'
+        else: color = 'Normal'
+        
+        return pd.Series([label, color])
+    
+    df[['Bar_Label', 'Form_Color']] = df.apply(get_bowl_props, axis=1)
+    df['MoM_Marker'] = df['Is_MoM'].apply(lambda x: "★" if x == 1 else "")
+    
+    return df
 
 # --- 9. DATA FETCHERS ---
 def fetch_comprehensive_stats(player, opp_filter=None):
@@ -344,6 +454,7 @@ def fetch_comprehensive_stats(player, opp_filter=None):
     SELECT 
         p.Match_ID, p.Team_Name, p.Opposition, p.Runs_Scored, p.Balls_Faced, p.Innings_Out, p.Is_MoM,
         p.Wickets_Taken, p.Runs_Conceded, p.Total_Balls_Bowled, p.Dismissal_Type,
+        p.Innings_Played, p.Not_Out_Innings, -- ADDED THESE COLUMNS
         i.Winner, i.Venue, i.Country
     FROM player_stats p
     JOIN (SELECT DISTINCT Match_ID, Winner, Venue, Country FROM innings_summary) i ON p.Match_ID = i.Match_ID
@@ -367,11 +478,13 @@ def app():
             opps = ["All Teams"] + get_opponents(player)
             opp_select = c3.selectbox("Filter Opponent", opps)
             
+            # 1. FETCH MAIN DATA (Global Stats)
             df = fetch_comprehensive_stats(player, opp_select)
             if df.empty: st.warning("No data found."); st.stop()
+            
             df['Result'] = df.apply(lambda x: "Won" if is_same_team(x['Team_Name'], x['Winner']) else "Lost", axis=1)
             
-            # Form & Basic Role
+            # 2. DETERMINE ROLE & FORM
             quick_role = "All-Rounder"
             if df['Wickets_Taken'].sum() < 3 and df['Runs_Scored'].sum() > 50: quick_role = "Batsman"
             elif df['Runs_Scored'].sum() < 50 and df['Wickets_Taken'].sum() > 5: quick_role = "Bowler"
@@ -385,6 +498,7 @@ def app():
                 status, reason = "⚪ NEUTRAL", "No recent data"
                 form_label = "Form Check"
 
+            # 3. HEADER METRICS
             with st.container():
                 cols = st.columns([2, 5])
                 with cols[0]:
@@ -399,29 +513,145 @@ def app():
                     m4.metric("MoMs", df['Is_MoM'].sum())
             st.divider()
 
+            # 4. TABS
             tabs = st.tabs(["📊 Career Arc", "⚖️ Win vs Loss", "🏠 Home vs Away", "🆚 Opponents", "🏆 Tournaments", "⭐ Ranking Story"])
             show_bat_first = True if quick_role != "Bowler" else False
 
-            # TAB 1: CAREER ARC
+            # --- TAB 1: ADVANCED CAREER ARC (PRO DASHBOARD) ---
             with tabs[0]:
-                df['MA_Runs'] = df['Runs_Scored'].rolling(5).mean()
-                df['MA_Wkts'] = df['Wickets_Taken'].rolling(5).mean()
-                base = alt.Chart(df.reset_index()).encode(x=alt.X('index', title='Timeline'))
-                chart_bat = (base.mark_bar(color='#4CAF50').encode(y=alt.Y('Runs_Scored',title= 'Runs Scored'), tooltip=['Runs_Scored']) + base.mark_line(color='red').encode(y='MA_Runs')).properties(title="Batting Arc")
-                chart_bowl = (base.mark_bar(color='#2196F3').encode(y=alt.Y('Wickets_Taken', title = 'Wickets Taken'), tooltip=['Wickets_Taken']) + base.mark_line(color='orange').encode(y='MA_Wkts')).properties(title="Bowling Arc")
-                if show_bat_first:
-                    st.altair_chart(chart_bat.interactive(), use_container_width=True); st.altair_chart(chart_bowl.interactive(), use_container_width=True)
-                else:
-                    st.altair_chart(chart_bowl.interactive(), use_container_width=True); st.altair_chart(chart_bat.interactive(), use_container_width=True)
+                
+                # Use Main DF Directly
+                bat_data = process_batting_data(df.copy())
+                bowl_data = process_bowling_data(df.copy())
+                
+                # --- BATTING VIZ ---
+                bat_chart_final = None
+                if not bat_data.empty:
+                    
+                    bat_scale = alt.Scale(
+                        domain=['Century', 'Fifty', 'Duck', 'Normal', 'Gray'], 
+                        range=['#ff6b6b', '#ffe66d', '#e63946', '#4ecdc4', '#2c3e50']
+                    )
+                    
+                    # LAYER A: Trajectory (Runs) - Left Axis
+                    base_traj = alt.Chart(bat_data).encode(x=alt.X('Match_Number:Q', axis=alt.Axis(labels=False, title=None)))
+                    
+                    traj_area = base_traj.mark_area(color='#1a535c', opacity=0.4).encode(
+                        y=alt.Y('Total Runs Scored:Q', axis=alt.Axis(title='Total Runs', titleColor='#4ecdc4')),
+                        tooltip=['Match_ID', 'Venue', 'Total Runs Scored']
+                    )
+                    
+                    # LAYER B: Average - Right Axis
+                    traj_line = base_traj.mark_line(color='#ff9f1c', strokeDash=[5,5]).encode(
+                        y=alt.Y('Batting Average:Q', axis=alt.Axis(title='Batting Avg', titleColor='#ff9f1c', orient='right')),
+                        tooltip=['Batting Average']
+                    )
+                    
+                    # Combined Top Panel
+                    # NOTE: width=850 is safe for 'wide' layout without clipping the right axis
+                    chart_A = alt.layer(traj_area, traj_line).resolve_scale(y='independent').properties(
+                        height=200, width=850, title=f"BATTING TRAJECTORY: {player}"
+                    )
+                    
+                    # FORM CHART
+                    base_form = alt.Chart(bat_data).encode(x=alt.X('Match_Number:Q', title='Match Timeline'))
+                    
+                    form_bars = base_form.mark_bar().encode(
+                        y=alt.Y('Runs_Scored:Q', title='Runs'),
+                        color=alt.Color('Form_Color:N', scale=bat_scale, legend=None),
+                        tooltip=['Match_ID', 'Venue', 'Runs_Scored', 'Bar_Label']
+                    )
+                    
+                    form_text = base_form.mark_text(dy=-10, color='white', size=10).encode(
+                        y=alt.Y('Runs_Scored:Q'), text='Bar_Label'
+                    )
+                    
+                    form_roll = alt.Chart(bat_data.dropna(subset=['Rolling_Avg'])).mark_line(color='white', opacity=0.5).encode(
+                        x='Match_Number:Q', y='Rolling_Avg:Q'
+                    )
+                    
+                    form_mom = base_form.mark_text(dy=-20, color='gold', size=14).encode(
+                        y='Runs_Scored:Q', text='MoM_Marker'
+                    )
+                    
+                    chart_B = alt.layer(form_bars, form_text, form_roll, form_mom).properties(
+                        height=250, width=850, title="FORM GUIDE"
+                    )
+                    
+                    # Final Assembly (Removed configure_layout to fix crash)
+                    bat_chart_final = alt.vconcat(chart_A, chart_B).resolve_scale(x='shared')
 
-            # TAB 2: WIN vs LOSS
+                # --- BOWLING VIZ ---
+                bowl_chart_final = None
+                if not bowl_data.empty:
+                    
+                    bowl_scale = alt.Scale(
+                        domain=['5-Fer', '3-Fer', 'Wicketless', 'Normal', 'DidNotBowl'], 
+                        range=['#f72585', '#4361ee', '#7209b7', '#4cc9f0', 'transparent']
+                    )
+                    
+                    base_b_traj = alt.Chart(bowl_data).encode(x=alt.X('Match_Number:Q', axis=alt.Axis(labels=False, title=None)))
+                    
+                    # LAYER A: Wickets - Left Axis
+                    b_traj_area = base_b_traj.mark_area(color='#3a0ca3', opacity=0.4).encode(
+                        y=alt.Y('Total Wickets Taken:Q', axis=alt.Axis(title='Total Wickets', titleColor='#4cc9f0')),
+                        tooltip=['Match_ID', 'Venue', 'Total Wickets Taken']
+                    )
+                    
+                    # LAYER B: Average - Right Axis
+                    b_traj_line = base_b_traj.mark_line(color='#f77f00', strokeDash=[5,5]).encode(
+                        y=alt.Y('Bowling Average:Q', axis=alt.Axis(title='Bowl Avg', titleColor='#f77f00', orient='right')),
+                        tooltip=['Bowling Average']
+                    )
+                    
+                    chart_C = alt.layer(b_traj_area, b_traj_line).resolve_scale(y='independent').properties(
+                        height=200, width=850, title=f"BOWLING TRAJECTORY: {player}"
+                    )
+                    
+                    # FORM CHART
+                    base_b_form = alt.Chart(bowl_data).encode(x=alt.X('Match_Number:Q', title='Match Timeline'))
+                    
+                    b_form_bars = base_b_form.mark_bar().encode(
+                        y=alt.Y('Wickets_Taken:Q', title='Wickets'),
+                        color=alt.Color('Form_Color:N', scale=bowl_scale, legend=None),
+                        tooltip=['Match_ID', 'Venue', 'Wickets_Taken', 'Bar_Label']
+                    )
+                    
+                    b_form_text = base_b_form.mark_text(dy=-10, color='white', size=10).encode(
+                        y=alt.Y('Wickets_Taken:Q'), text='Bar_Label'
+                    )
+                    
+                    b_form_roll = alt.Chart(bowl_data.dropna(subset=['Rolling_Wkts'])).mark_line(color='white', opacity=0.5).encode(
+                        x='Match_Number:Q', y='Rolling_Wkts:Q'
+                    )
+                    
+                    b_form_mom = base_b_form.mark_text(dy=-20, color='gold', size=14).encode(
+                        y='Wickets_Taken:Q', text='MoM_Marker'
+                    )
+                    
+                    chart_D = alt.layer(b_form_bars, b_form_text, b_form_roll, b_form_mom).properties(
+                        height=250, width=850, title="FORM GUIDE"
+                    )
+                    
+                    bowl_chart_final = alt.vconcat(chart_C, chart_D).resolve_scale(x='shared')
+
+                # --- RENDER ---
+                # IMPORTANT: use_container_width=False is required to respect the fixed 850px width
+                # This prevents Streamlit from squashing the right-side axis.
+                if show_bat_first:
+                    if bat_chart_final: st.altair_chart(bat_chart_final, use_container_width=False)
+                    if bowl_chart_final: st.divider(); st.altair_chart(bowl_chart_final, use_container_width=False)
+                else:
+                    if bowl_chart_final: st.altair_chart(bowl_chart_final, use_container_width=False)
+                    if bat_chart_final: st.divider(); st.altair_chart(bat_chart_final, use_container_width=False)
+
+            # TAB 2: WIN vs LOSS (Keeping original logic)
             with tabs[1]:
                 wl_grp = df.groupby('Result').agg({
                     'Match_ID': 'count', 'Runs_Scored': 'sum', 'Balls_Faced': 'sum', 'Innings_Out': 'sum',
                     'Is_MoM': 'sum', 'Wickets_Taken': 'sum', 'Runs_Conceded': 'sum', 'Total_Balls_Bowled': 'sum'
                 }).reset_index().set_index('Result').reindex(['Won', 'Lost']).fillna(0)
 
-                # Batting Logic
                 wl_grp['Bat_Avg'] = np.where(wl_grp['Innings_Out']>0, wl_grp['Runs_Scored']/wl_grp['Innings_Out'], wl_grp['Runs_Scored'])
                 wl_grp['Strike_Rate'] = np.where(wl_grp['Balls_Faced']>0, (wl_grp['Runs_Scored']/wl_grp['Balls_Faced'])*100, 0)
                 for res in ['Won', 'Lost']:
@@ -429,13 +659,11 @@ def app():
                     wl_grp.loc[res, 'Count_30s'] = len(sub[(sub['Runs_Scored']>=30) & (sub['Runs_Scored']<50)])
                     wl_grp.loc[res, 'Count_50s'] = len(sub[sub['Runs_Scored']>=50])
 
-                # Bowling Logic
                 wl_grp['Average'] = np.where(wl_grp['Wickets_Taken']>0, wl_grp['Runs_Conceded']/wl_grp['Wickets_Taken'], 0)
                 wl_grp['Economy'] = np.where(wl_grp['Total_Balls_Bowled']>0, (wl_grp['Runs_Conceded']/wl_grp['Total_Balls_Bowled'])*6, 0)
                 for res in ['Won', 'Lost']:
                     sub = df[df['Result'] == res]
                     wl_grp.loc[res, '3W+'] = len(sub[sub['Wickets_Taken']>=3])
-                    # 4W+ removed per request
                     wl_grp.loc[res, '5W+'] = len(sub[sub['Wickets_Taken']>=5])
                     wl_grp.loc[res, 'MoM'] = sub['Is_MoM'].sum()
 
