@@ -104,19 +104,27 @@ with row2_col3:
         st.write("Complete ICC player ranking lists across all formats and disciplines.")
         st.page_link("pages/6_Global_Ranking.py", label="View Rankings", icon="📊", use_container_width=True)
 
-# Row 3: Venue Intelligence (New Section)
+# Row 3: Advanced Intelligence
 st.write("") # Spacer
 row3_col1, row3_col2, row3_col3 = st.columns(3, gap="medium")
 
-# Placing Venue Atlas in the center column for visibility
-with row3_col2:
+# 1. Venue Atlas
+with row3_col1:
     with st.container(border=True):
         st.markdown("### 🏟️ Venue Atlas")
         st.write("Interactive global map with stadium stats, pitch history, and host intelligence.")
-        # Ensure the filename here matches exactly what you created (Venue_Analysis.py)
         st.page_link("pages/7_Venues.py", label="Explore Venues", icon="🗺️", use_container_width=True)
 
+# 2. AI Analyst (New Addition)
+with row3_col2:
+    with st.container(border=True):
+        st.markdown("### 🤖 AI Data Analyst")
+        st.write("Ask questions in plain English. Powered by Llama-3 to generate SQL and insights instantly.")
+        st.page_link("pages/8_AI_Agent.py", label="Ask the AI", icon="✨", use_container_width=True)
 
+# 3. Empty Placeholder (Optional - keeps the grid alignment if you add a 9th page later)
+with row3_col3:
+    st.empty()
 # --- FOOTER ---
 st.divider()
 st.markdown(
