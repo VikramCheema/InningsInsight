@@ -39,7 +39,7 @@ st.markdown("""
 
 # --- HERO SECTION ---
 # Create two columns: Left for Identity (Logo+Text), Right for the Video
-col_hero_text, col_hero_video = st.columns([1.5, 1], gap="medium")
+col_hero_text, col_hero_video = st.columns([1, 1], gap="medium")
 
 # LEFT COLUMN: Logo & Title
 with col_hero_text:
