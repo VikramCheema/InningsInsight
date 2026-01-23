@@ -39,7 +39,7 @@ st.markdown("""
 
 # --- HERO SECTION ---
 # Create two columns: Left for Identity (Logo+Text), Right for the Video
-col_hero_text, col_hero_video = st.columns([1, 1], gap="medium")
+col_hero_text, col_hero_video = st.columns([1.25, 1], gap="medium")
 
 # LEFT COLUMN: Logo & Title
 with col_hero_text:
@@ -66,9 +66,26 @@ with col_hero_video:
     video_path = os.path.join(current_dir, "assets", "intro_video.mp4")
     
     if os.path.exists(video_path):
-        # autoplay + loop + muted is required for auto-start
+        # 1. The Video
         st.video(video_path, format="video/mp4", autoplay=True, loop=True, muted=True)
-
+        
+        # 2. The Caption (Responsive Color)
+        st.markdown(
+            """
+            <div style="
+                font-family: 'New York', 'Times New Roman', serif;
+                font-style: italic;
+                font-weight: bold;
+                text-align: center;
+                margin-top: 8px;
+                font-size: 1.1rem;
+                opacity: 0.8; 
+            ">
+                Innings Insight Cricket™
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 st.divider()
 
 # --- NAVIGATION GRID ---
