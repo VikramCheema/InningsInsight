@@ -38,23 +38,36 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- HERO SECTION ---
-col_L, col_M, col_R = st.columns([3, 2, 3])
+# Create two columns: Left for Identity (Logo+Text), Right for the Video
+col_hero_text, col_hero_video = st.columns([1.5, 1], gap="medium")
 
-with col_M:
+# LEFT COLUMN: Logo & Title
+with col_hero_text:
+    # 1. The Logo
     if os.path.exists(logo_path):
-        st.image(logo_path, use_container_width=True)
+        st.image(logo_path, width=130) # Adjusted width for side-by-side look
     else:
-        st.markdown("<h1 style='text-align: center; font-size: 5rem;'>🏏</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size: 4rem;'>🏏</h1>", unsafe_allow_html=True)
+    
+    # 2. The Title & Subtitle
+    # Note: We align text left here to balance with the video on the right
+    st.markdown(
+        """
+        <div>
+            <h1 style="color: #4CAF50; font-size: 3.5rem; margin-bottom: 0;">InningsInsight</h1>
+            <p style="font-size: 1.3rem; color: #666; margin-top: 5px;">Advanced Cricket Analytics & Match Intelligence</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-st.markdown(
-    """
-    <div class='main-header'>
-        <h1>InningsInsight</h1>
-        <p>Advanced Cricket Analytics & Match Intelligence</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# RIGHT COLUMN: The Loop Video
+with col_hero_video:
+    video_path = os.path.join(current_dir, "assets", "intro_video.mp4")
+    
+    if os.path.exists(video_path):
+        # autoplay + loop + muted is required for auto-start
+        st.video(video_path, format="video/mp4", autoplay=True, loop=True, muted=True)
 
 st.divider()
 
