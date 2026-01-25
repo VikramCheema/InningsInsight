@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 import os
-
+import base64
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="InningsInsight",
@@ -65,27 +65,57 @@ with col_hero_text:
 with col_hero_video:
     video_path = os.path.join(current_dir, "assets", "intro_video.mp4")
     
-    if os.path.exists(video_path):
-        # 1. The Video
-        st.video(video_path, format="video/mp4", autoplay=True, loop=True, muted=True)
+    # Check if file exists AND has content
+    if os.path.exists(video_path) and os.path.getsize(video_path) > 0:
         
-        # 2. The Caption (Responsive Color)
-        st.markdown(
-            """
-            <div style="
-                font-family: 'New York', 'Times New Roman', serif;
-                font-style: italic;
-                font-weight: bold;
-                text-align: center;
-                margin-top: 8px;
-                font-size: 1.1rem;
-                opacity: 0.8; 
-            ">
-                Innings Insight Cricket™
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        # 1. READ & ENCODE
+        try:
+            with open(video_path, "rb") as f:
+                video_bytes = f.read()
+                # standard b64encode results in no newlines, which is safer for HTML
+                video_b64 = base64.b64encode(video_bytes).decode()
+                
+            # 2. EMBED HTML (Updated structure)
+            st.markdown(
+                f"""
+                <video 
+                    width="100%" 
+                    autoplay 
+                    loop 
+                    muted 
+                    playsinline 
+                    style="border-radius: 10px; pointer-events: none;" 
+                    src="data:video/mp4;base64,{video_b64}">
+                </video>
+                """,
+                unsafe_allow_html=True
+            )
+        except Exception as e:
+            st.error(f"Error loading video: {e}")
+
+    elif os.path.exists(video_path) and os.path.getsize(video_path) == 0:
+        st.error("File found but it is empty (0 KB).")
+    else:
+        # Fallback if file is missing
+        st.info("Video file not found in 'assets/intro_video.mp4'")
+
+    # 3. CAPTION
+    st.markdown(
+        """
+        <div style="
+            font-family: 'New York', 'Times New Roman', serif;
+            font-style: italic;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 8px;
+            font-size: 1.1rem;
+            opacity: 0.8; 
+        ">
+            Innings Insight Cricket™
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 st.divider()
 
 # --- NAVIGATION GRID ---

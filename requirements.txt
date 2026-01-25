@@ -10,3 +10,4 @@ sqlalchemy
 langchain
 langchain-community
 langchain-groq
+base64
