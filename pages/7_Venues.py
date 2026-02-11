@@ -33,7 +33,7 @@ VENUE_MAP = {
     "bellerive oval": "Bellerive Oval", "coffs harbour": "Coffs Harbour", "docklands stadium": "Docklands Stadium",
     "gabba": "The Gabba", "the gabba": "The Gabba", "junction oval": "Junction Oval",
     "karen rolton oval": "Karen Rolton Oval", "manuka oval": "Manuka Oval", "melbourne": "Melbourne Cricket Ground",
-    "melbourne cricket ground": "Melbourne Cricket Ground", "perth stadium": "Perth Stadium", "sydney cricket ground": "sydney cricket ground",
+    "melbourne cricket ground": "Melbourne Cricket Ground", "perth stadium": "Perth Stadium", "sydney cricket ground": "Sydney Cricket Ground","Sydney Cricket Ground": "Sydney Cricket Ground", "SCG":"Sydney Cricket Ground",
     # --- ENGLAND / WALES ---
     "ageas bowl": "Utilita Bowl", "utilita bowl": "Utilita Bowl", "headingley": "Headingley",
     "kia oval": "Kia Oval", "lords": "Lords", "lord's": "Lords", "lord’s": "Lords",
