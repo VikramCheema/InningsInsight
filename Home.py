@@ -128,19 +128,19 @@ with row1_col1:
     with st.container(border=True):
         st.markdown("### ⚔️ Match Center")
         st.write("Deep dive into Head-to-Head rivalries, venue history, and predictive matchup modeling.")
-        st.page_link("pages/1_Match_Center.py", label="Open Match Center", icon="🚀", use_container_width=True)
+        st.page_link("pages/01_Match_Center.py", label="Open Match Center", icon="🚀", use_container_width=True)
 
 with row1_col2:
     with st.container(border=True):
         st.markdown("### 📈 Player Trajectory")
         st.write("Track career arcs, analyze current form, and visualize milestone progressions.")
-        st.page_link("pages/2_Player_Trajectory.py", label="Analyze Players", icon="📈", use_container_width=True)
+        st.page_link("pages/02_Player_Trajectory.py", label="Analyze Players", icon="📈", use_container_width=True)
 
 with row1_col3:
     with st.container(border=True):
         st.markdown("### 👥 Player Comparison")
         st.write("Head-to-head stat comparisons across different phases of play and opposition.")
-        st.page_link("pages/3_Player_Comparison.py", label="Compare Players", icon="🆚", use_container_width=True)
+        st.page_link("pages/03_Player_Comparison.py", label="Compare Players", icon="🆚", use_container_width=True)
 
 # Row 2: Tournament & Rankings
 st.write("") # Spacer
@@ -150,19 +150,19 @@ with row2_col1:
     with st.container(border=True):
         st.markdown("### 🌍 Team Rankings")
         st.write("Current team standings, rating trends, and historical dominance analysis.")
-        st.page_link("pages/4_Team_Ranking.py", label="View Rankings", icon="🏆", use_container_width=True)
+        st.page_link("pages/04_Team_Ranking.py", label="View Rankings", icon="🏆", use_container_width=True)
 
 with row2_col2:
     with st.container(border=True):
         st.markdown("### 🏆 World Cup 2026")
         st.write("Exclusive HQ for the 2026 tournament. Points table, NRR scenarios, and MVP race.")
-        st.page_link("pages/5_World_Cup_2026.py", label="Enter Tournament Mode", icon="🔥", use_container_width=True)
+        st.page_link("pages/05_World_Cup_2026.py", label="Enter Tournament Mode", icon="🔥", use_container_width=True)
 
 with row2_col3:
     with st.container(border=True):
         st.markdown("### 💪 Global Player Ranking")
         st.write("Complete ICC player ranking lists across all formats and disciplines.")
-        st.page_link("pages/6_Global_Ranking.py", label="View Rankings", icon="📊", use_container_width=True)
+        st.page_link("pages/06_Global_Ranking.py", label="View Rankings", icon="📊", use_container_width=True)
 
 # Row 3: Advanced Intelligence
 st.write("") # Spacer
@@ -173,14 +173,14 @@ with row3_col1:
     with st.container(border=True):
         st.markdown("### 🏟️ Venue Atlas")
         st.write("Interactive global map with stadium stats, pitch history, and host intelligence.")
-        st.page_link("pages/7_Venues.py", label="Explore Venues", icon="🗺️", use_container_width=True)
+        st.page_link("pages/07_Venues.py", label="Explore Venues", icon="🗺️", use_container_width=True)
 
 # 2. AI Analyst (New Addition)
 with row3_col2:
     with st.container(border=True):
         st.markdown("### 🤖 AI Data Analyst")
         st.write("Ask questions in plain English. Powered by Llama-3 to generate SQL and insights instantly.")
-        st.page_link("pages/8_AI_Agent.py", label="Ask the AI", icon="✨", use_container_width=True)
+        st.page_link("pages/08_AI_Agent.py", label="Ask the AI", icon="✨", use_container_width=True)
 
 # 3. Empty Placeholder (Optional - keeps the grid alignment if you add a 9th page later)
 with row3_col3:
