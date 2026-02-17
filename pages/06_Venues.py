@@ -63,7 +63,9 @@ VENUE_MAP = {
     "derral sammy stadium": "Daren Sammy Stadium", "kensington oval": "Kensington Oval",
     "queen's park oval": "Queen's Park Oval", "sabina garden": "Sabina Park", "sabina park": "Sabina Park",
     # --- SRI LANKA / BANGLADESH ---
-    "colombo stadium": "Colombo Stadium", "dhaka stadium": "Dhaka Stadium"
+    "colombo stadium": "Colombo Stadium", "dhaka stadium": "Dhaka Stadium",
+    # --- Zimbabwe ---
+    "harare sports club": "Harare Sports Club","harare": "Harare Sports Club","salisbury sports club": "Harare Sports Club"
 }
 
 # B. COORDINATES
@@ -92,7 +94,7 @@ VENUE_COORDS = {
     "Brian Lara Stadium": [10.2920, -61.4285], "Daren Sammy Stadium": [14.0714, -60.9575],
     "Kensington Oval": [13.1042, -59.6212], "Queen's Park Oval": [10.6698, -61.5235],
     "Sabina Park": [17.9790, -76.7828], "Colombo Stadium": [6.9397, 79.8687],
-    "Dhaka Stadium": [23.8069, 90.3636],
+    "Dhaka Stadium": [23.8069, 90.3636],"Harare Sports Club": [-17.8141, 31.0506],
 }
 
 COUNTRY_CENTERS = {
@@ -100,7 +102,7 @@ COUNTRY_CENTERS = {
     "England": [52.3555, -1.1743], "South Africa": [-30.5595, 22.9375],
     "New Zealand": [-40.9006, 174.8860], "Pakistan": [30.3753, 69.3451],
     "West Indies": [18.1096, -77.2975], "Sri Lanka": [7.8731, 80.7718],
-    "Bangladesh": [23.6850, 90.3563]
+    "Bangladesh": [23.6850, 90.3563],"Zimbabwe": [-19.0154, 29.1549],
 }
 
 # --- 3. TEAM HELPERS ---
