@@ -33,7 +33,7 @@ VENUE_MAP = {
     "bellerive oval": "Bellerive Oval", "coffs harbour": "Coffs Harbour", "docklands stadium": "Docklands Stadium",
     "gabba": "The Gabba", "the gabba": "The Gabba", "junction oval": "Junction Oval",
     "karen rolton oval": "Karen Rolton Oval", "manuka oval": "Manuka Oval", "melbourne": "Melbourne Cricket Ground",
-    "melbourne cricket ground": "Melbourne Cricket Ground", "perth stadium": "Perth Stadium", "sydney cricket ground": "Sydney Cricket Ground","Sydney Cricket Ground": "Sydney Cricket Ground", "SCG":"Sydney Cricket Ground",
+    "melbourne cricket ground": "Melbourne Cricket Ground", "perth stadium": "Perth Stadium", "sydney cricket ground": "Sydney Cricket Ground", "scg":"Sydney Cricket Ground",
     # --- ENGLAND / WALES ---
     "ageas bowl": "Utilita Bowl", "utilita bowl": "Utilita Bowl", "headingley": "Headingley",
     "kia oval": "Kia Oval", "lords": "Lords", "lord's": "Lords", "lord’s": "Lords",
@@ -63,7 +63,7 @@ VENUE_MAP = {
     "derral sammy stadium": "Daren Sammy Stadium", "kensington oval": "Kensington Oval",
     "queen's park oval": "Queen's Park Oval", "sabina garden": "Sabina Park", "sabina park": "Sabina Park",
     # --- SRI LANKA / BANGLADESH ---
-    "colombo stadium": "Colombo Stadium", "dhaka stadium": "Dhaka Stadium", "pallekele international":"Pallekele International", "Pallekele":"Pallekele International", "pallekele":"Pallekele International",
+    "colombo stadium": "Colombo Stadium", "dhaka stadium": "Dhaka Stadium", "pallekele international":"Pallekele International", "pallekele":"Pallekele International",
     "r. premadasa stadium":"R. Premadasa Stadium", "premadasa stadium":"R. Premadasa Stadium", "premadasa":"R. Premadasa Stadium",
     "galle international stadium":"Galle International Stadium", "galle international":"Galle International Stadium","galle stadium":"Galle International Stadium",
     # --- Zimbabwe ---
@@ -96,7 +96,8 @@ VENUE_COORDS = {
     "Brian Lara Stadium": [10.2920, -61.4285], "Daren Sammy Stadium": [14.0714, -60.9575],
     "Kensington Oval": [13.1042, -59.6212], "Queen's Park Oval": [10.6698, -61.5235],
     "Sabina Park": [17.9790, -76.7828], "Colombo Stadium": [6.9397, 79.8687],
-    "Dhaka Stadium": [23.8069, 90.3636],"Harare Sports Club": [-17.8141, 31.0506],"R. Premadasa Stadium": [6.9397, 79.8719],"Galle International Stadium": [6.0314, 80.2163],"Galle International Stadium": [6.0314, 80.2163],
+    "Dhaka Stadium": [23.8069, 90.3636],"Harare Sports Club": [-17.8141, 31.0506],
+    "R. Premadasa Stadium": [6.9397, 79.8719],"Galle International Stadium": [6.0314, 80.2163],"Pallekele International Cricket Stadium": [7.2801, 80.7020],
 }
 
 COUNTRY_CENTERS = {
