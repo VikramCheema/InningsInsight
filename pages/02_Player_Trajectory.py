@@ -150,12 +150,27 @@ def get_ranking_history_data(target_player):
         conn.close(); return None, None, None
 
     df_final = calculate_points(df_final)
-    df_final.loc[df_final['Total_Wickets'] < 1, 'Pts_AllRounder'] = -9999.0
+    
+    # --- MATCH GLOBAL RANKINGS DISQUALIFICATION MASK ---
+    mask_not_ar = (df_final['Total_Wickets'] == 0) | (df_final['Total_Runs'] < 50)
+    df_final.loc[mask_not_ar, 'Pts_AllRounder'] = -1.0 # Use -1.0 for consistency
 
     target_row = df_final[df_final['Player_Name'] == target_player].iloc[0]
-    best_role_col = target_row[['Pts_Batting', 'Pts_Bowling', 'Pts_AllRounder']].idxmax()
-    role_map = {'Pts_Batting': 'Batsman', 'Pts_Bowling': 'Bowler', 'Pts_AllRounder': 'All-Rounder'}
-    conclusive_role = role_map[best_role_col]
+    
+    # Determine role by highest points (the logic used in Global Rankings)
+    bat = target_row['Pts_Batting']
+    bowl = target_row['Pts_Bowling']
+    ar = target_row['Pts_AllRounder']
+    
+    if bat >= bowl and bat >= ar:
+        best_role_col = 'Pts_Batting'
+        conclusive_role = "Batsman"
+    elif bowl >= bat and bowl >= ar:
+        best_role_col = 'Pts_Bowling'
+        conclusive_role = "Bowler"
+    else:
+        best_role_col = 'Pts_AllRounder'
+        conclusive_role = "All-Rounder"
     
     history_query = """
     SELECT Match_ID, Player_Name, Runs_Scored, Balls_Faced, Innings_Out, Wickets_Taken, Runs_Conceded, Is_MoM, Overs_Balled
@@ -204,7 +219,9 @@ def get_ranking_history_data(target_player):
         current_df = pd.DataFrame.from_dict(stats, orient='index')
         current_df.reset_index(inplace=True); current_df.rename(columns={'index': 'Player_Name'}, inplace=True)
         current_df = calculate_points(current_df)
-        current_df.loc[current_df['Total_Wickets'] < 1, 'Pts_AllRounder'] = -9999.0
+        # Apply same global threshold mask during the history replay
+        m = (current_df['Total_Wickets'] == 0) | (current_df['Total_Runs'] < 50)
+        current_df.loc[m, 'Pts_AllRounder'] = -1.0
         
         ranked_df = current_df.sort_values(by=best_role_col, ascending=False).reset_index(drop=True)
         ranked_df['Rank'] = ranked_df.index + 1
@@ -485,9 +502,9 @@ def app():
             df['Result'] = df.apply(lambda x: "Won" if is_same_team(x['Team_Name'], x['Winner']) else "Lost", axis=1)
             
             # 2. DETERMINE ROLE & FORM
-            quick_role = "All-Rounder"
-            if df['Wickets_Taken'].sum() < 3 and df['Runs_Scored'].sum() > 50: quick_role = "Batsman"
-            elif df['Runs_Scored'].sum() < 50 and df['Wickets_Taken'].sum() > 5: quick_role = "Bowler"
+            # Use the already calculated conclusive_role from the ranking engine
+            hist_data, conclusive_role, metric_col = get_ranking_history_data(player)
+            quick_role = conclusive_role # Rename for compatibility with the rest of your UI
             
             if last_tour_prefix:
                 curr = df[df['Match_ID'].astype(str).str.startswith(last_tour_prefix)]
