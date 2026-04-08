@@ -653,7 +653,7 @@ def app():
                     base_b_form = alt.Chart(bowl_data).encode(x=alt.X('Match_Number:Q', title='Match Timeline'))
                     
                     b_form_bars = base_b_form.mark_bar().encode(
-                        y=alt.Y('Wickets_Taken:Q', title='Wickets'),
+                        y=alt.Y('Wickets_Taken:Q', title='Wickets', axis=alt.Axis(tickMinStep=1, format='d')),
                         color=alt.Color('Form_Color:N', scale=bowl_scale, legend=None),
                         tooltip=['Match_ID', 'Venue', 'Wickets_Taken', 'Bar_Label']
                     )
