@@ -662,7 +662,7 @@ def app():
                         y=alt.Y('Wickets_Taken:Q'), text='Bar_Label'
                     )
                     
-                    b_form_roll = alt.Chart(bowl_data.dropna(subset=['Rolling_Wkts'])).mark_line(color='white', opacity=0.5).encode(
+                    b_form_roll = alt.Chart(bowl_data.dropna(subset=['Rolling_Wkts'])).mark_line(color='red', strokeDash=[2,5] opacity=0.5).encode(
                         x='Match_Number:Q', y='Rolling_Wkts:Q'
                     )
                     
