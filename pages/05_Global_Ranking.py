@@ -157,14 +157,19 @@ with tab1:
     st.subheader("Global Batting Rankings")
     df_bat = df_filtered[df_filtered['Role'] == 'Batsman'].sort_values('Pts_Batting', ascending=False).head(50)
     
-    # Add the link column
-    df_bat['Deep Dive'] = df_bat['Player_Name'].apply(make_trajectory_link)
+    # We overwrite the Player_Name column to contain the URL string
+    df_bat['Player_Link'] = df_bat['Player_Name'].apply(make_trajectory_link)
     
-    cols_bat = ['Player_Name', 'Deep Dive', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Pts_Batting']
+    cols_bat = ['Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Pts_Batting']
+    
     st.dataframe(
         df_bat[cols_bat],
         column_config={
-            "Deep Dive": st.column_config.LinkColumn("Deep Dive", display_text="📈 View Stats"),
+            # The 'Player_Link' column holds the URL, but displays the 'Player_Name'
+            "Player_Link": st.column_config.LinkColumn(
+                "Player Name", 
+                display_text=r"^.*player=(.*)$" # This regex trick pulls the name back out of the URL for display
+            ),
             "Bat_Avg": st.column_config.NumberColumn("Avg", format="%.2f"),
             "Bat_SR": st.column_config.NumberColumn("SR", format="%.2f"),
             "Pts_Batting": st.column_config.NumberColumn("Points", format="%.0f")
@@ -177,13 +182,14 @@ with tab2:
     st.subheader("Global Bowling Rankings")
     df_bowl = df_filtered[df_filtered['Role'] == 'Bowler'].sort_values('Pts_Bowling', ascending=False).head(50)
     
-    df_bowl['Deep Dive'] = df_bowl['Player_Name'].apply(make_trajectory_link)
+    df_bowl['Player_Link'] = df_bowl['Player_Name'].apply(make_trajectory_link)
     
-    cols_bowl = ['Player_Name', 'Deep Dive', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_Econ', 'Pts_Bowling']
+    cols_bowl = ['Player_Link', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_Econ', 'Pts_Bowling']
+    
     st.dataframe(
         df_bowl[cols_bowl],
         column_config={
-            "Deep Dive": st.column_config.LinkColumn("Deep Dive", display_text="📈 View Stats"),
+            "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"^.*player=(.*)$"),
             "Bowl_Avg": st.column_config.NumberColumn("Avg", format="%.2f"),
             "Bowl_Econ": st.column_config.NumberColumn("Econ", format="%.2f"),
             "Pts_Bowling": st.column_config.NumberColumn("Points", format="%.0f")
@@ -196,13 +202,14 @@ with tab3:
     st.subheader("Global All-Rounder Rankings")
     df_ar = df_filtered[df_filtered['Role'] == 'All-Rounder'].sort_values('Pts_AllRounder', ascending=False).head(50)
     
-    df_ar['Deep Dive'] = df_ar['Player_Name'].apply(make_trajectory_link)
+    df_ar['Player_Link'] = df_ar['Player_Name'].apply(make_trajectory_link)
     
-    cols_ar = ['Player_Name', 'Deep Dive', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Pts_AllRounder']
+    cols_ar = ['Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Pts_AllRounder']
+    
     st.dataframe(
         df_ar[cols_ar],
         column_config={
-            "Deep Dive": st.column_config.LinkColumn("Deep Dive", display_text="📈 View Stats"),
+            "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"^.*player=(.*)$"),
             "Pts_AllRounder": st.column_config.NumberColumn("Points", format="%.0f")
         },
         use_container_width=True, hide_index=True
