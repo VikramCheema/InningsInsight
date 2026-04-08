@@ -170,6 +170,8 @@ with tab1:
                 "Player Name", 
                 display_text=r"^.*player=(.*)$" # This regex trick pulls the name back out of the URL for display
             ),
+            "Team_Name":"Team",
+            "Matches_Played": "Matches",
             "Bat_Avg": st.column_config.NumberColumn("Avg", format="%.2f"),
             "Bat_SR": st.column_config.NumberColumn("SR", format="%.2f"),
             "Pts_Batting": st.column_config.NumberColumn("Points", format="%.0f")
@@ -190,6 +192,7 @@ with tab2:
         df_bowl[cols_bowl],
         column_config={
             "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"^.*player=(.*)$"),
+            "Total Wickets": "Wickets", "Team_Name":"Team", "Matches_Played":"Matches",
             "Bowl_Avg": st.column_config.NumberColumn("Avg", format="%.2f"),
             "Bowl_Econ": st.column_config.NumberColumn("Econ", format="%.2f"),
             "Pts_Bowling": st.column_config.NumberColumn("Points", format="%.0f")
@@ -210,7 +213,8 @@ with tab3:
         df_ar[cols_ar],
         column_config={
             "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"^.*player=(.*)$"),
-            "Pts_AllRounder": st.column_config.NumberColumn("Points", format="%.0f")
+            "Pts_AllRounder": st.column_config.NumberColumn("Points", format="%.0f"),
+            "Total Wickets": "Wickets", "Team_Name":"Team", "Matches_Played":"Matches", "Total_Runs":"Runs"
         },
         use_container_width=True, hide_index=True
     )
