@@ -482,14 +482,38 @@ def fetch_comprehensive_stats(player, opp_filter=None):
 
 # --- 10. MAIN UI ---
 def app():
+    # 1. READ URL PARAMETERS
+    params = st.query_params
+    url_player = params.get("player") # Catch the 'player' key from the URL
+
     st.title("📈 Player Deep Dive")
+    
+    # 2. SETUP DEFAULTS
+    all_teams = get_teams()
+    default_team_idx = 0
+    default_player_idx = 0
+
+    # 3. IF ACCESSED VIA LINK: FIND THE PLAYER'S TEAM
+    if url_player:
+        # Check database for this player's team to sync the first dropdown
+        search_team = run_query("SELECT Team_Name FROM player_stats WHERE Player_Name = ? LIMIT 1", (url_player,))
+        if not search_team.empty:
+            p_team = search_team.iloc[0]['Team_Name']
+            if p_team in all_teams:
+                default_team_idx = all_teams.index(p_team)
+
     c1, c2, c3 = st.columns(3)
-    team = c1.selectbox("Select Team", get_teams())
+    team = c1.selectbox("Select Team", all_teams, index=default_team_idx)
     
     if team:
         last_tour_prefix, last_tour_name = get_latest_tour_prefix(team)
         players = get_squad(team)
-        player = c2.selectbox("Select Player", players)
+        
+        # 4. SYNC PLAYER DROPDOWN
+        if url_player in players:
+            default_player_idx = players.index(url_player)
+            
+        player = c2.selectbox("Select Player", players, index=default_player_idx)
         
         if player:
             opps = ["All Teams"] + get_opponents(player)

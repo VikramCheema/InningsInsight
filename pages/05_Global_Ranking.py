@@ -20,6 +20,11 @@ def get_db_path():
 
 DB_FILE = get_db_path()
 
+# --- HELPER FUNCTION ---
+
+def make_trajectory_link(player_name):
+    return f"/Player_Trajectory?player={player_name.replace(' ', '+')}"
+
 # --- 2. LOGIC: ROLE ASSIGNMENT ---
 def determine_primary_role(row):
     """
@@ -147,65 +152,58 @@ with st.sidebar:
 # --- TABS ---
 tab1, tab2, tab3 = st.tabs(["🏏 Batsmen", "⚾ Bowlers", "⭐ All-Rounders"])
 
-# --- TAB 1: BATSMEN (Filtered by Role == 'Batsman') ---
+# --- TAB 1: BATSMEN ---
 with tab1:
     st.subheader("Global Batting Rankings")
-    
-    # STRICT FILTER: Only show players whose primary role is Batsman
     df_bat = df_filtered[df_filtered['Role'] == 'Batsman'].sort_values('Pts_Batting', ascending=False).head(50)
     
-    cols_bat = ['Player_Name', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Count_100s', 'Count_50s', 'Pts_Batting']
-    display_bat = df_bat[cols_bat].rename(columns={
-        'Player_Name': 'Player', 'Team_Name': 'Team', 'Matches_Played': 'Mat',
-        'Total_Runs': 'Runs', 'Bat_Avg': 'Avg', 'Bat_SR': 'SR',
-        'Count_100s': '100s', 'Count_50s': '50s', 'Pts_Batting': 'Points'
-    })
+    # Add the link column
+    df_bat['Deep Dive'] = df_bat['Player_Name'].apply(make_trajectory_link)
     
+    cols_bat = ['Player_Name', 'Deep Dive', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Pts_Batting']
     st.dataframe(
-        display_bat.style
-        .format({'Avg': "{:.2f}", 'SR': "{:.2f}", 'Points': "{:.0f}"})
-        .background_gradient(subset=['Points'], cmap="Greens"),
+        df_bat[cols_bat],
+        column_config={
+            "Deep Dive": st.column_config.LinkColumn("Deep Dive", display_text="📈 View Stats"),
+            "Bat_Avg": st.column_config.NumberColumn("Avg", format="%.2f"),
+            "Bat_SR": st.column_config.NumberColumn("SR", format="%.2f"),
+            "Pts_Batting": st.column_config.NumberColumn("Points", format="%.0f")
+        },
         use_container_width=True, hide_index=True
     )
 
-# --- TAB 2: BOWLERS (Filtered by Role == 'Bowler') ---
+# --- TAB 2: BOWLERS ---
 with tab2:
     st.subheader("Global Bowling Rankings")
-    
-    # STRICT FILTER: Only show players whose primary role is Bowler
     df_bowl = df_filtered[df_filtered['Role'] == 'Bowler'].sort_values('Pts_Bowling', ascending=False).head(50)
     
-    cols_bowl = ['Player_Name', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_Econ', 'Bowl_SR', 'Count_5W', 'Pts_Bowling']
-    display_bowl = df_bowl[cols_bowl].rename(columns={
-        'Player_Name': 'Player', 'Team_Name': 'Team', 'Matches_Played': 'Mat',
-        'Total_Wickets': 'Wkts', 'Bowl_Avg': 'Avg', 'Bowl_Econ': 'Econ',
-        'Bowl_SR': 'SR', 'Count_5W': '5W', 'Pts_Bowling': 'Points'
-    })
+    df_bowl['Deep Dive'] = df_bowl['Player_Name'].apply(make_trajectory_link)
     
+    cols_bowl = ['Player_Name', 'Deep Dive', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_Econ', 'Pts_Bowling']
     st.dataframe(
-        display_bowl.style
-        .format({'Avg': "{:.2f}", 'Econ': "{:.2f}", 'SR': "{:.1f}", 'Points': "{:.0f}"})
-        .background_gradient(subset=['Points'], cmap="Blues"),
+        df_bowl[cols_bowl],
+        column_config={
+            "Deep Dive": st.column_config.LinkColumn("Deep Dive", display_text="📈 View Stats"),
+            "Bowl_Avg": st.column_config.NumberColumn("Avg", format="%.2f"),
+            "Bowl_Econ": st.column_config.NumberColumn("Econ", format="%.2f"),
+            "Pts_Bowling": st.column_config.NumberColumn("Points", format="%.0f")
+        },
         use_container_width=True, hide_index=True
     )
 
-# --- TAB 3: ALL-ROUNDERS (Filtered by Role == 'All-Rounder') ---
+# --- TAB 3: ALL-ROUNDERS ---
 with tab3:
     st.subheader("Global All-Rounder Rankings")
-    
-    # STRICT FILTER: Only show players whose primary role is All-Rounder
     df_ar = df_filtered[df_filtered['Role'] == 'All-Rounder'].sort_values('Pts_AllRounder', ascending=False).head(50)
     
-    cols_ar = ['Player_Name', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Pts_AllRounder']
-    display_ar = df_ar[cols_ar].rename(columns={
-        'Player_Name': 'Player', 'Team_Name': 'Team', 'Matches_Played': 'Mat',
-        'Total_Runs': 'Runs', 'Total_Wickets': 'Wkts',
-        'Bat_Avg': 'Bat Avg', 'Bowl_Avg': 'Bowl Avg', 'Pts_AllRounder': 'Points'
-    })
+    df_ar['Deep Dive'] = df_ar['Player_Name'].apply(make_trajectory_link)
     
+    cols_ar = ['Player_Name', 'Deep Dive', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Pts_AllRounder']
     st.dataframe(
-        display_ar.style
-        .format({'Bat Avg': "{:.2f}", 'Bowl Avg': "{:.2f}", 'Points': "{:.0f}"})
-        .background_gradient(subset=['Points'], cmap="Oranges"),
+        df_ar[cols_ar],
+        column_config={
+            "Deep Dive": st.column_config.LinkColumn("Deep Dive", display_text="📈 View Stats"),
+            "Pts_AllRounder": st.column_config.NumberColumn("Points", format="%.0f")
+        },
         use_container_width=True, hide_index=True
     )
