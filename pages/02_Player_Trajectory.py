@@ -235,21 +235,53 @@ def get_ranking_history_data(target_player):
 
     return pd.DataFrame(history_data), conclusive_role, best_role_col
 
-def plot_ranking_curve(hist_df, player, role):
-    if hist_df.empty: return None
-    sns.set_theme(style="darkgrid", rc={"axes.facecolor": "#1c1c1c", 'figure.facecolor': '#1c1c1c', 'text.color': 'white', 'axes.labelcolor': 'white', 'xtick.color': 'white', 'ytick.color': 'white', 'grid.color': '#333333'})
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for _, row in hist_df.iterrows():
-        if row['Played']: ax.axvspan(row['Match_Num'] - 0.5, row['Match_Num'] + 0.5, color='#334444', alpha=0.5, lw=0, zorder=0)
-    sns.lineplot(data=hist_df, x='Match_Num', y='Rank', marker='o', color='#00ffcc', linewidth=2.5, ax=ax, zorder=2)
-    ax.invert_yaxis(); ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.set_title(f"Ranking History: {player} ({role})", fontsize=14, fontweight='bold', color='white')
-    ax.set_xlabel("Match Timeline", fontsize=12); ax.set_ylabel("Rank Position", fontsize=12, color='#00ffcc')
+def plot_ranking_curve_altair(hist_df, player, role):
+    if hist_df.empty:
+        return None
+
+    # 1. Prepare data for the participation shading (spans)
+    # Altair's rect needs a start and end point to center on the match number
+    hist_df['Match_Start'] = hist_df['Match_Num'] - 0.5
+    hist_df['Match_End'] = hist_df['Match_Num'] + 0.5
+
+    # 2. Background Shading (Only where Played == True)
+    participation_shading = alt.Chart(hist_df).transform_filter(
+        alt.datum.Played == True
+    ).mark_rect(
+        color='lightgray',
+        opacity=0.4
+    ).encode(
+        x='Match_Start:Q',
+        x2='Match_End:Q',
+        tooltip=alt.value(None)
+    )
+
+    # 3. The Line and Points
+    # sort='descending' on Y ensures Rank 1 is at the top
+    base = alt.Chart(hist_df).encode(
+        x=alt.X('Match_Num:Q', title='Match Timeline', axis=alt.Axis(tickMinStep=1)),
+        y=alt.Y('Rank:Q', title='Rank Position', sort='descending', axis=alt.Axis(tickMinStep=1)),
+        tooltip=[alt.Tooltip('Rank:Q', title='Rank')]
+    )
+
+    line = base.mark_line(point=True, strokeWidth=2).encode(
+        color=alt.value('#0072B2') # Standard blue
+    )
+
+    # 4. Layering and Title
+    # We use subtitle to display the Best/Worst/Current facts clearly
     best, worst, curr = hist_df['Rank'].min(), hist_df['Rank'].max(), hist_df['Rank'].iloc[-1]
-    stats_text = f"Best: #{best}  |  Worst: #{worst}  |  Current: #{curr}"
-    ax.text(0.5, -0.2, stats_text, transform=ax.transAxes, color='white', fontsize=12, fontweight='bold', ha='center', bbox=dict(facecolor='#2a2a2a', edgecolor='white', boxstyle='round,pad=0.5'))
-    plt.subplots_adjust(bottom=0.25)
-    return fig
+    
+    chart = alt.layer(participation_shading, line).properties(
+        width=800,
+        height=400,
+        title={
+            "text": f"Ranking History: {player} ({role})",
+            "subtitle": [f"Best: #{best} | Worst: #{worst} | Current: #{curr}"]
+        }
+    ).interactive() # Allows zooming/panning
+
+    return chart
 
 # --- 7. FORM AUDIT ---
 def audit_form(hist, curr, role):
@@ -274,85 +306,146 @@ def audit_form(hist, curr, role):
     return "⚪ NEUTRAL", "Insufficient data"
 
 # --- 8. PLOT FUNCTIONS ---
-def plot_batting_tournaments(df):
-    COLOR_BG, COLOR_TEXT, COLOR_BAR, COLOR_POINT, COLOR_AVG_LINE = "#121212", "#E0E0E0", "#00E5FF", "#FF007F", "#FFFFFF"
-    df[['Tour_Code', 'Tour_Name']] = df['Match_ID'].apply(lambda x: pd.Series(extract_tournament_info(x)))
-    grouped = df.groupby(['Tour_Code', 'Tour_Name']).agg({'Runs_Scored': 'sum', 'Innings_Out': 'sum', 'Match_ID': 'count'}).rename(columns={'Match_ID': 'Matches'}).reset_index()
-    grouped['Tour_Code_Int'] = grouped['Tour_Code'].astype(int); grouped = grouped.sort_values('Tour_Code_Int')
-    grouped['Tour_Label'] = "T" + grouped['Tour_Code'].astype(str).str.lstrip("0")
-    grouped['Plot_Avg'] = grouped.apply(lambda x: x['Runs_Scored']/x['Innings_Out'] if x['Innings_Out']>0 else x['Runs_Scored'], axis=1)
-    grouped['Label_Avg'] = grouped.apply(lambda x: f"{x['Runs_Scored']/x['Innings_Out']:.1f}" if x['Innings_Out']>0 else f"{x['Runs_Scored']}*", axis=1)
-    career_avg = grouped['Runs_Scored'].sum() / grouped['Innings_Out'].sum() if grouped['Innings_Out'].sum() > 0 else 0
-    sns.set_theme(style="dark", rc={"axes.facecolor": COLOR_BG, 'figure.facecolor': COLOR_BG, 'text.color': COLOR_TEXT, 'axes.labelcolor': COLOR_TEXT, 'xtick.color': COLOR_TEXT, 'ytick.color': COLOR_TEXT, 'grid.color': '#333333'})
-    fig, ax1 = plt.subplots(figsize=(12, 8))
-    sns.barplot(data=grouped, x='Tour_Label', y='Runs_Scored', color=COLOR_BAR, alpha=0.6, edgecolor=COLOR_BAR, linewidth=1, ax=ax1, zorder=1)
-    ax1.set_ylabel('Runs', color=COLOR_BAR, fontweight='bold'); ax1.grid(True, axis='y', linestyle=':', alpha=0.3)
-    ax2 = ax1.twinx(); ax2.axhline(y=career_avg, color=COLOR_AVG_LINE, linestyle='--', linewidth=1.5, alpha=0.8, zorder=2)
-    for i, row in grouped.iterrows():
-        is_not_out = (row['Innings_Out'] == 0)
-        marker, size, edge = ('*', 150, 'white') if is_not_out else ('o', 80, COLOR_POINT)
-        ax2.scatter(i, row['Plot_Avg'], color=COLOR_POINT, s=size, marker=marker, edgecolors=edge, linewidth=1.5, zorder=3)
-        ax2.text(i, row['Plot_Avg'] + (row['Plot_Avg']*0.05) + 2, row['Label_Avg'], color='white', ha='center', fontsize=10, fontweight='bold')
-    ax2.set_ylabel('Avg', color=COLOR_POINT, fontweight='bold'); ax2.grid(False); ax2.set_ylim(0, grouped['Plot_Avg'].max() * 1.3)
-    return fig, grouped[['Tour_Label', 'Tour_Name', 'Runs_Scored', 'Label_Avg', 'Matches']]
+def plot_batting_tournaments_altair(df):
+    df = df.copy()
+    def extract_info(match_id):
+        m = re.match(r"^(\d+)_(.+?)-\d+", str(match_id))
+        if m: return m.group(1), m.group(2).replace('_', ' ')
+        return "999", "Unknown"
+    
+    df[['Tour_Code_Raw', 'Tour_Name']] = df['Match_ID'].apply(lambda x: pd.Series(extract_info(x)))
+    df['Sort_Key'] = pd.to_numeric(df['Tour_Code_Raw'], errors='coerce').fillna(999).astype(int)
+    df['Tour_Code'] = df['Tour_Code_Raw']
 
-def plot_bowling_tournaments(df):
-    COLOR_BG, COLOR_TEXT, COLOR_BAR, COLOR_AVG, COLOR_SR = "#121212", "#E0E0E0", "#00E5FF", "#FF007F", "#FFD700"
+    grouped = df.groupby(['Sort_Key', 'Tour_Code', 'Tour_Name']).agg({
+        'Runs_Scored': 'sum', 'Innings_Out': 'sum', 'Match_ID': 'count'
+    }).reset_index()
+    
+    grouped['Avg'] = grouped.apply(lambda x: x['Runs_Scored']/x['Innings_Out'] if x['Innings_Out']>0 else x['Runs_Scored'], axis=1)
+
+    x_axis = alt.X('Sort_Key:O', title='Tournament', axis=alt.Axis(labelExpr="'T' + datum.value", labelAngle=0))
+
+    # Fix 1: Explicitly define the Y-axis for bars
+    bars = alt.Chart(grouped).mark_bar(color='#00E5FF', opacity=0.5).encode(
+        x=x_axis,
+        y=alt.Y('Runs_Scored:Q', title='Total Runs'), # This defaults to left
+        tooltip=['Tour_Name', 'Runs_Scored']
+    )
+
+    # Fix 2: Ensure text labels share the SAME Y-axis scale as bars
+    bar_text = bars.mark_text(dy=-10, fontWeight='bold').encode(
+        text='Runs_Scored:Q'
+    ).transform_filter(alt.datum.Runs_Scored > 0)
+
+    # Fix 3: Ensure the line is the only one using a colored/named right axis
+    line = alt.Chart(grouped).mark_line(color='#FF007F', point=True).encode(
+        x=x_axis,
+        y=alt.Y('Avg:Q', title='Batting Average', axis=alt.Axis(titleColor='#FF007F')),
+        tooltip=['Tour_Name', alt.Tooltip('Avg:Q', title='Batting Avg', format='.1f')]
+    )
+
+    # Combine with independent scales
+    chart = alt.layer(bars, bar_text, line).resolve_scale(
+        y='independent'
+    ).properties(width=800, height=400, title="Tournament Batting: Runs & Average")
+
+    return chart, grouped
+
+def plot_bowling_tournaments_altair(df):
     df_bowl = df[df['Total_Balls_Bowled'] > 0].copy()
     if df_bowl.empty: return None, pd.DataFrame()
-    df_bowl[['Tour_Code', 'Tour_Name']] = df_bowl['Match_ID'].apply(lambda x: pd.Series(extract_tournament_info(x)))
-    grouped = df_bowl.groupby(['Tour_Code', 'Tour_Name']).agg({'Wickets_Taken': 'sum', 'Runs_Conceded': 'sum', 'Total_Balls_Bowled': 'sum', 'Match_ID': 'count'}).rename(columns={'Match_ID': 'Innings'}).reset_index()
-    grouped['Tour_Code_Int'] = grouped['Tour_Code'].astype(int); grouped = grouped.sort_values('Tour_Code_Int')
-    grouped['Tour_Label'] = "T" + grouped['Tour_Code'].astype(str).str.lstrip("0")
-    grouped['Bowl_Avg'] = grouped.apply(lambda x: x['Runs_Conceded']/x['Wickets_Taken'] if x['Wickets_Taken']>0 else np.nan, axis=1)
-    grouped['Bowl_SR'] = grouped.apply(lambda x: x['Total_Balls_Bowled']/x['Wickets_Taken'] if x['Wickets_Taken']>0 else np.nan, axis=1)
-    sns.set_theme(style="dark", rc={"axes.facecolor": COLOR_BG, 'figure.facecolor': COLOR_BG, 'text.color': COLOR_TEXT, 'axes.labelcolor': COLOR_TEXT, 'xtick.color': COLOR_TEXT, 'ytick.color': COLOR_TEXT, 'grid.color': '#333333'})
-    fig, ax1 = plt.subplots(figsize=(12, 8))
-    sns.barplot(data=grouped, x='Tour_Label', y='Wickets_Taken', color=COLOR_BAR, alpha=0.5, edgecolor=COLOR_BAR, linewidth=1, ax=ax1, zorder=1)
-    ax1.set_ylabel('Wickets', color=COLOR_BAR, fontweight='bold'); ax1.grid(True, axis='y', linestyle=':', alpha=0.3)
-    ax2 = ax1.twinx(); ax2.plot(grouped['Tour_Label'], grouped['Bowl_Avg'], color=COLOR_AVG, marker='o', label='Avg')
-    ax2.plot(grouped['Tour_Label'], grouped['Bowl_SR'], color=COLOR_SR, linestyle='--', marker='d', label='SR')
-    for i, row in grouped.iterrows():
-        if pd.notna(row['Bowl_Avg']): ax2.text(i, row['Bowl_Avg']-1, f"{row['Bowl_Avg']:.1f}", color=COLOR_AVG, ha='center', fontsize=9, fontweight='bold')
-        ax1.text(i, row['Wickets_Taken']+0.1, f"{row['Wickets_Taken']}", color='white', ha='center', fontsize=10, fontweight='bold')
-    ax2.set_ylabel('Avg (Pink) & SR (Gold)', color='white', fontweight='bold'); ax2.grid(False)
-    ax1.legend(handles=[Patch(facecolor=COLOR_BAR, alpha=0.5, label='Wickets'), Line2D([0],[0], color=COLOR_AVG, marker='o', label='Avg'), Line2D([0],[0], color=COLOR_SR, linestyle='--', marker='d', label='SR')], loc='upper left', facecolor=COLOR_BG, labelcolor=COLOR_TEXT)
-    return fig, grouped[['Tour_Label', 'Tour_Name', 'Wickets_Taken', 'Bowl_Avg', 'Bowl_SR']]
+    df_bowl[['Tour_Code_Raw', 'Tour_Name']] = df_bowl['Match_ID'].apply(lambda x: pd.Series(extract_tournament_info(x)))
+    df_bowl['Sort_Key'] = pd.to_numeric(df_bowl['Tour_Code_Raw'], errors='coerce').fillna(999).astype(int)
+    grouped = df_bowl.groupby(['Sort_Key', 'Tour_Code_Raw', 'Tour_Name']).agg({'Wickets_Taken':'sum','Runs_Conceded':'sum'}).reset_index()
+    grouped['Bowl_Avg'] = grouped.apply(lambda x: x['Runs_Conceded']/x['Wickets_Taken'] if x['Wickets_Taken']>0 else 0, axis=1)
+    
+    x_axis = alt.X('Sort_Key:O', title='Tournament', axis=alt.Axis(labelExpr="'T' + datum.value", labelAngle=0))
+    bars = alt.Chart(grouped).mark_bar(color='#00E5FF', opacity=0.4).encode(x=x_axis, y=alt.Y('Wickets_Taken:Q', title='Wickets'))
+    text = bars.mark_text(dy=-10, fontWeight='bold').encode(text='Wickets_Taken:Q').transform_filter(alt.datum.Wickets_Taken > 0)
+    line = alt.Chart(grouped).mark_line(color='#FF007F', point=True).encode(x=x_axis, y=alt.Y('Bowl_Avg:Q', title='Bowling Average', axis=alt.Axis(titleColor='#FF007F')))
+    
+    chart = alt.layer(alt.layer(bars, text), line).resolve_scale(y='independent').properties(width=850, height=400, title="Tournament Bowling")
+    return chart, grouped
 
-def plot_batting_impact(stats_df):
-    COLOR_WON, COLOR_LOST = '#00b894', '#d63031'
-    plt.style.use('dark_background')
-    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
-    plot_data = stats_df.reindex(['Won', 'Lost']).fillna(0); indices = plot_data.index
-    ax1 = axes[0, 0]; ax1.grid(False); width, x = 0.35, np.arange(len(indices)); ax1_sr = ax1.twinx(); ax1_sr.grid(False); ax1_sr.yaxis.set_major_locator(ticker.MultipleLocator(50))
-    ax1.bar(x - width/2, plot_data['Bat_Avg'], width, color='#0984e3', alpha=0.8); ax1_sr.bar(x + width/2, plot_data['Strike_Rate'], width, color='#fdcb6e', alpha=0.8)
-    ax1.set_title("Avg vs SR", color='white'); ax1.set_xticks(x); ax1.set_xticklabels(indices, color='white')
-    ax2 = axes[0, 1]; ax2.grid(False); colors = [COLOR_WON if idx == 'Won' else COLOR_LOST for idx in indices]
-    bars = ax2.bar(indices, plot_data['Runs_Scored'], color=colors, alpha=0.85); ax2.set_title("Runs", color='white')
-    for bar in bars: ax2.text(bar.get_x()+bar.get_width()/2, bar.get_height(), f"{int(bar.get_height())}", ha='center', va='bottom', color='white')
-    ax3 = axes[1, 0]; milestones = plot_data[['Count_30s', 'Count_50s', 'Is_MoM']].T; milestones.plot(kind='bar', ax=ax3, color=[COLOR_WON, COLOR_LOST], width=0.7, alpha=0.9); ax3.set_title("Milestones", color='white'); ax3.legend(['Won', 'Lost'], fontsize=8);ax3.set_xticklabels(['30s', '50s', 'MoM'], color='white');ax3.tick_params(axis='x', labelrotation=0)
-    ax4 = axes[1, 1]; total = plot_data['Runs_Scored'].sum()
-    if total > 0: ax4.pie([plot_data.loc['Won', 'Runs_Scored'], plot_data.loc['Lost', 'Runs_Scored']], labels=[f"W\n{int(plot_data.loc['Won', 'Runs_Scored'])}", f"L\n{int(plot_data.loc['Lost', 'Runs_Scored'])}"], autopct='%1.0f%%', colors=[COLOR_WON, COLOR_LOST], explode=(0.05, 0)); ax4.add_artist(plt.Circle((0,0), 0.65, fc='#0E1117'))
-    ax4.set_title("Split", color='white'); plt.tight_layout()
-    return fig
+def plot_impact_altair(stats_df, title_prefix, is_batting=True):
+    # Prepare data
+    plot_data = stats_df.reindex(['Won', 'Lost']).reset_index()
+    color_scale = alt.Scale(domain=['Won', 'Lost'], range=['#00b894', '#d63031'])
 
-def plot_bowling_impact(stats_df):
-    COLOR_WON, COLOR_LOST = '#00b894', '#d63031'
-    plt.style.use('dark_background')
-    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
-    plot_data = stats_df.reindex(['Won', 'Lost']).fillna(0); indices = plot_data.index
-    ax1 = axes[0, 0]; ax1.grid(False); width, x = 0.35, np.arange(len(indices)); ax1_eco = ax1.twinx(); ax1_eco.grid(False)
-    ax1.bar(x - width/2, plot_data['Average'], width, color='#0984e3', alpha=0.8); ax1_eco.bar(x + width/2, plot_data['Economy'], width, color='#fdcb6e', alpha=0.8)
-    ax1.set_title("Avg vs Econ", color='white'); ax1.set_xticks(x); ax1.set_xticklabels(indices, color='white')
-    ax2 = axes[0, 1]; ax2.grid(False); colors = [COLOR_WON if idx == 'Won' else COLOR_LOST for idx in indices]
-    bars = ax2.bar(indices, plot_data['Wickets_Taken'], color=colors, alpha=0.85); ax2.set_title("Wickets", color='white')
-    for bar in bars: ax2.text(bar.get_x()+bar.get_width()/2, bar.get_height(), f"{int(bar.get_height())}", ha='center', va='bottom', color='white')
-    # MODIFIED: Removed '4W+' here
-    ax3 = axes[1, 0]; hauls = plot_data[['3W+', '5W+', 'MoM']].T; hauls.plot(kind='bar', ax=ax3, color=[COLOR_WON, COLOR_LOST], width=0.7, alpha=0.9); ax3.set_title("Hauls & Awards", color='white'); ax3.legend(['Won', 'Lost'], fontsize=8); ax3.yaxis.set_major_locator(MaxNLocator(integer=True));ax3.tick_params(axis= 'x', labelrotation = 0)
-    ax4 = axes[1, 1]; total = plot_data['Wickets_Taken'].sum()
-    if total > 0: ax4.pie([plot_data.loc['Won', 'Wickets_Taken'], plot_data.loc['Lost', 'Wickets_Taken']], labels=[f"W\n{int(plot_data.loc['Won', 'Wickets_Taken'])}", f"L\n{int(plot_data.loc['Lost', 'Wickets_Taken'])}"], autopct='%1.0f%%', colors=[COLOR_WON, COLOR_LOST], explode=(0.05, 0)); ax4.add_artist(plt.Circle((0,0), 0.65, fc='#0E1117'))
-    ax4.set_title("Split", color='white'); plt.tight_layout()
-    return fig
+    # --- Chart 1: Avg ---
+    y_metric = 'Bat_Avg' if is_batting else 'Average'
+    base1 = alt.Chart(plot_data).encode(
+        x=alt.X('Result:N', title=None),
+        tooltip=[alt.Tooltip('Result:N'), alt.Tooltip(f'{y_metric}:Q', title='Avg', format='.1f')]
+    )
+    bars1 = base1.mark_bar(size=40, color='#0984e3').encode(y=alt.Y(f'{y_metric}:Q', title="Avg"))
+    # Filter: Only show text if Avg > 0
+    text1 = base1.mark_text(dy=-5, fontWeight='bold').transform_filter(
+        alt.datum[y_metric] > 0
+    ).encode(y=f'{y_metric}:Q', text=alt.Text(f'{y_metric}:Q', format='.1f'))
+    chart1 = (bars1 + text1).properties(width=160, height=200, title="Avg by Result")
+
+    # --- Chart 2: Total Volume ---
+    main_val = 'Runs_Scored' if is_batting else 'Wickets_Taken'
+    main_label = "Runs" if is_batting else "Wickets"
+    base2 = alt.Chart(plot_data).encode(
+        x=alt.X('Result:N', title=None),
+        tooltip=[alt.Tooltip('Result:N'), alt.Tooltip(f'{main_val}:Q', title=f'Total {main_label}')]
+    )
+    bars2 = base2.mark_bar().encode(y=alt.Y(f'{main_val}:Q', title=main_label), color=alt.Color('Result:N', scale=color_scale, legend=None))
+    # Filter: Only show text if Runs/Wickets > 0
+    text2 = base2.mark_text(dy=-5, fontWeight='bold').transform_filter(
+        alt.datum[main_val] > 0
+    ).encode(y=f'{main_val}:Q', text=f'{main_val}:Q')
+    chart2 = (bars2 + text2).properties(width=160, height=200, title=f"Total {main_label}")
+
+    # --- Chart 3: Milestones & Awards ---
+    label_map = {'Count_30s': '30+', 'Count_50s': '50+', 'Is_MoM': 'MoM', '3W+': '3W+', '5W+': '5W+', 'MoM': 'MoM'}
+    milestone_cols = ['Count_30s', 'Count_50s', 'Is_MoM'] if is_batting else ['3W+', '5W+', 'MoM']
+    
+    base3 = alt.Chart(plot_data).transform_fold(
+        milestone_cols, as_=['Original', 'Count']
+    ).transform_calculate(
+        Category=f"datum.Original == '{milestone_cols[0]}' ? '{label_map[milestone_cols[0]]}' : datum.Original == '{milestone_cols[1]}' ? '{label_map[milestone_cols[1]]}' : 'MoM'"
+    ).encode(
+        x=alt.X('Category:N', title=None, sort=['30+', '50+', '3W+', '5W+', 'MoM']),
+        xOffset='Result:N',
+        tooltip=[alt.Tooltip('Result:N'), alt.Tooltip('Category:N', title='Milestone'), alt.Tooltip('Count:Q', title='Count')]
+    )
+    bars3 = base3.mark_bar().encode(
+        y=alt.Y('Count:Q', axis=alt.Axis(tickMinStep=1), title="Count"),
+        color=alt.Color('Result:N', scale=color_scale, legend=alt.Legend(orient='bottom', title=None))
+    )
+    # Filter: Only show text if Count > 0
+    text3 = base3.mark_text(dy=-5, fontWeight='bold', fontSize=10).transform_filter(
+        alt.datum.Count > 0
+    ).encode(y='Count:Q', text='Count:Q')
+    chart3 = (bars3 + text3).properties(width=220, height=200, title="Milestones & Awards")
+
+    # --- Chart 4: Split ---
+    base4 = alt.Chart(plot_data).encode(
+        theta=alt.Theta(f'{main_val}:Q', stack=True),
+        color=alt.Color('Result:N', scale=color_scale, legend=None),
+        tooltip=[alt.Tooltip('Result:N'), alt.Tooltip(f'{main_val}:Q', title=main_label)]
+    )
+    
+    arcs4 = base4.mark_arc(innerRadius=45, outerRadius=80)
+    
+    # Instead of arc-positioning, we use standard X/Y to put text in the dead center
+    # We use Result:N to separate Won and Lost vertically
+    text4 = alt.Chart(plot_data).mark_text(fontWeight='bold').encode(
+        x=alt.value(80), # Half of the 160 width
+        y=alt.Y('Result:N', axis=None).scale(padding=40), # Spreads them vertically in the hole
+        text=alt.Text(f'{main_val}:Q'),
+        color=alt.Color('Result:N', scale=color_scale, legend=None)
+    ).transform_filter(
+        alt.datum[main_val] > 0
+    ).properties(width=160, height=200)
+    
+    chart4 = alt.layer(arcs4, text4).properties(width=160, height=200, title=f"{main_label} Split")
+
+    return alt.hconcat(chart1, chart2, chart3, chart4).resolve_scale(color='shared').configure_view(strokeOpacity=0)
+
 # --- HELPER: ADVANCED CHART DATA PROCESSING ---
 
 def process_batting_data(df):
@@ -607,7 +700,7 @@ def app():
                         y=alt.Y('Runs_Scored:Q'), text='Bar_Label'
                     )
                     
-                    form_roll = alt.Chart(bat_data.dropna(subset=['Rolling_Avg'])).mark_line(color='white', opacity=0.5).encode(
+                    form_roll = alt.Chart(bat_data.dropna(subset=['Rolling_Avg'])).mark_line(color='#ff9f1c', strokeDash=[5,5], opacity=0.9).encode(
                         x='Match_Number:Q', y='Rolling_Avg:Q'
                     )
                     
@@ -662,7 +755,7 @@ def app():
                         y=alt.Y('Wickets_Taken:Q'), text='Bar_Label'
                     )
                     
-                    b_form_roll = alt.Chart(bowl_data.dropna(subset=['Rolling_Wkts'])).mark_line(color='red', strokeDash=[2,5], opacity=0.5).encode(
+                    b_form_roll = alt.Chart(bowl_data.dropna(subset=['Rolling_Wkts'])).mark_line(color='#ff9f1c', strokeDash=[5,5], opacity=0.9).encode(
                         x='Match_Number:Q', y='Rolling_Wkts:Q'
                     )
                     
@@ -709,13 +802,13 @@ def app():
                     wl_grp.loc[res, 'MoM'] = sub['Is_MoM'].sum()
 
                 if show_bat_first:
-                    st.markdown("#### 🏏 Batting Impact"); st.pyplot(plot_batting_impact(wl_grp))
+                    st.altair_chart(plot_impact_altair(wl_grp, "Batting", is_batting=True), use_container_width=True)
                     st.divider()
-                    st.markdown("#### ⚾ Bowling Impact"); st.pyplot(plot_bowling_impact(wl_grp))
+                    st.altair_chart(plot_impact_altair(wl_grp, "Bowling", is_batting=False), use_container_width=True)
                 else:
-                    st.markdown("#### ⚾ Bowling Impact"); st.pyplot(plot_bowling_impact(wl_grp))
+                    st.altair_chart(plot_impact_altair(wl_grp, "Bowling", is_batting=False), use_container_width=True)
                     st.divider()
-                    st.markdown("#### 🏏 Batting Impact"); st.pyplot(plot_batting_impact(wl_grp))
+                    st.altair_chart(plot_impact_altair(wl_grp, "Batting", is_batting=True), use_container_width=True)
 
             # TAB 3: HOME vs AWAY
             with tabs[2]:
@@ -782,23 +875,37 @@ def app():
                     st.altair_chart(chart_bat_opp, use_container_width=True)
             # TAB 5: TOURNAMENTS
             with tabs[4]:
-                st.markdown("#### 🏏 Batting"); fig_bat, df_bat = plot_batting_tournaments(df); st.pyplot(fig_bat)
-                with st.expander("Batting Data"): st.dataframe(df_bat, hide_index=True)
+                st.markdown("#### 🏏 Batting Tournament History")
+                chart_bat, df_bat_grouped = plot_batting_tournaments_altair(df)
+                st.altair_chart(chart_bat, use_container_width=True)
+                with st.expander("View Batting Table"):
+                    st.dataframe(df_bat_grouped, hide_index=True)
+                    
                 st.divider()
-                st.markdown("#### ⚾ Bowling"); fig_bowl, df_bowl = plot_bowling_tournaments(df)
-                if fig_bowl: st.pyplot(fig_bowl); 
-                with st.expander("Bowling Data"): st.dataframe(df_bowl, hide_index=True)
-
-            # TAB 6: RANKING
+                
+                st.markdown("#### ⚾ Bowling Tournament History")
+                chart_bowl, df_bowl_grouped = plot_bowling_tournaments_altair(df)
+                if chart_bowl:
+                    st.altair_chart(chart_bowl, use_container_width=True)
+                    with st.expander("View Bowling Table"):
+                        st.dataframe(df_bowl_grouped, hide_index=True)
+                else:
+                    st.info("Player has not bowled in any tournaments.")
+           # TAB 6: RANKING
             with tabs[5]:
                 st.markdown("#### ⭐ Player Ranking Journey")
                 st.caption(f"Determining {player}'s best role relative to global stats and tracking rank over time.")
+                
+                # This function is already in your code fetching the data
                 hist_data, conclusive_role, metric_col = get_ranking_history_data(player)
+                
                 if hist_data is not None and not hist_data.empty:
-                    fig_rank = plot_ranking_curve(hist_data, player, conclusive_role)
-                    st.pyplot(fig_rank)
+                    # Call the new Altair function
+                    chart_rank = plot_ranking_curve_altair(hist_data, player, conclusive_role)
+                    st.altair_chart(chart_rank, use_container_width=True)
                     st.success(f"Tracked based on **{conclusive_role}** metrics.")
-                else: st.warning("Insufficient data.")
+                else: 
+                    st.warning("Insufficient data.")
 
 if __name__ == "__main__":
     app()
