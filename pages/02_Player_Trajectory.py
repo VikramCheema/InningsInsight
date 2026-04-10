@@ -562,9 +562,10 @@ def fetch_comprehensive_stats(player, opp_filter=None):
     opp_clause = f"AND p.Opposition = '{opp_filter}'" if opp_filter and opp_filter != "All Teams" else ""
     query = f"""
     SELECT 
-        p.Match_ID, p.Team_Name, p.Opposition, p.Runs_Scored, p.Balls_Faced, p.Innings_Out, p.Is_MoM,
-        p.Wickets_Taken, p.Runs_Conceded, p.Total_Balls_Bowled, p.Dismissal_Type,
-        p.Innings_Played, p.Not_Out_Innings, -- ADDED THESE COLUMNS
+        p.Tournament_ID, p.Match_ID, p.Team_Name, p.Opposition, p.Runs_Scored, 
+        p.Balls_Faced, p.Innings_Out, p.Is_MoM, p.Wickets_Taken, p.Runs_Conceded, 
+        p.Total_Balls_Bowled, p.Dismissal_Type, p.Innings_Played, p.Not_Out_Innings,
+        p.Fours_Hit, p.Sixes_Hit, p.Dot_Balls_Bowled, -- From Schema v2.2
         i.Winner, i.Venue, i.Country
     FROM player_stats p
     JOIN (SELECT DISTINCT Match_ID, Winner, Venue, Country FROM innings_summary) i ON p.Match_ID = i.Match_ID
@@ -648,7 +649,7 @@ def app():
             st.divider()
 
             # 4. TABS
-            tabs = st.tabs(["📊 Career Arc", "⚖️ Win vs Loss", "🏠 Home vs Away", "🆚 Opponents", "🏆 Tournaments", "⭐ Ranking Story"])
+            tabs = st.tabs(["📊 Career Arc", "⚖️ Win vs Loss", "🏠 Home vs Away", "🆚 Opponents", "🏆 Tournaments", "⭐ Ranking Story", "🔥 Power Metrics"])
             show_bat_first = True if quick_role != "Bowler" else False
 
             # --- TAB 1: ADVANCED CAREER ARC (PRO DASHBOARD) ---
@@ -906,6 +907,83 @@ def app():
                     st.success(f"Tracked based on **{conclusive_role}** metrics.")
                 else: 
                     st.warning("Insufficient data.")
+
+            # --- TAB 7: POWER & PRESSURE (FILTERED FROM T028) ---
+            with tabs[6]:
+                st.header("🔥 Power & Pressure Analysis")
+                
+                # Define the threshold for modern metrics
+                START_TOUR = "028"
+                
+                # SYNCED DATASET: All calculations below use this filtered DF
+                modern_df = df[df['Tournament_ID'].astype(str) >= START_TOUR].copy()
+                
+                if modern_df.empty:
+                    st.warning(f"No data available for this player since Tournament {START_TOUR}.")
+                else:
+                    # 1. ERA AGGREGATES (Top Section)
+                    m_4s = int(modern_df['Fours_Hit'].sum())
+                    m_6s = int(modern_df['Sixes_Hit'].sum())
+                    m_dots = int(modern_df['Dot_Balls_Bowled'].sum())
+                    
+                    st.markdown(f"### Power Metrics since end of World Cup 2025")
+                    # st.caption("Synchronized totals used for factor analysis below.")
+                    t1, t2, t3 = st.columns(3)
+                    t1.metric("Total Fours", m_4s)
+                    t2.metric("Total Sixes", m_6s)
+                    t3.metric("Total Dot Balls", m_dots)
+                    
+                    st.divider()
+
+                    # 2. FACTOR ANALYSIS (Bottom Section)
+                    m_col1, m_col2 = st.columns(2)
+                    
+                    # --- BATTING: BOUNDARY FACTOR ---
+                    with m_col1:
+                        m_runs = modern_df['Runs_Scored'].sum()
+                        m_bound_runs = (m_4s * 4) + (m_6s * 6)
+                        
+                        st.subheader("🏏 Boundary Factor")
+                        if m_runs > 0:
+                            bound_perc = (m_bound_runs / m_runs) * 100
+                            st.write(f"**{bound_perc:.1f}%** of runs come from boundaries.")
+                            
+                            dist_data = pd.DataFrame({
+                                'Type': ['Boundaries', 'Singles/Doubles'],
+                                'Runs': [m_bound_runs, m_runs - m_bound_runs]
+                            })
+                            
+                            chart_b = alt.Chart(dist_data).mark_arc(innerRadius=60).encode(
+                                theta="Runs:Q",
+                                color=alt.Color("Type:N", scale=alt.Scale(range=['#f72585', '#4cc9f0'])),
+                                tooltip=['Type', 'Runs']
+                            ).properties(height=300, title="Run Scoring Distribution")
+                            st.altair_chart(chart_b, use_container_width=True)
+                        else:
+                            st.info("No runs scored in this era.")
+
+                    # --- BOWLING: PRESSURE FACTOR ---
+                    with m_col2:
+                        m_balls = modern_df['Total_Balls_Bowled'].sum()
+                        
+                        st.subheader("🛑 Pressure Factor")
+                        if m_balls > 0:
+                            dot_perc = (m_dots / m_balls) * 100
+                            st.write(f"**{dot_perc:.1f}%** of deliveries are dot balls.")
+                            
+                            dot_dist_data = pd.DataFrame({
+                                'Type': ['Dot Balls', 'Scoring Balls'],
+                                'Count': [m_dots, m_balls - m_dots]
+                            })
+                            
+                            chart_d = alt.Chart(dot_dist_data).mark_arc(innerRadius=60).encode(
+                                theta="Count:Q",
+                                color=alt.Color("Type:N", scale=alt.Scale(range=['#4ecdc4', '#2c3e50'])),
+                                tooltip=['Type', 'Count']
+                            ).properties(height=300, title="Delivery Pressure Distribution")
+                            st.altair_chart(chart_d, use_container_width=True)
+                        else:
+                            st.info("No bowling records in this era.")
 
 if __name__ == "__main__":
     app()
