@@ -137,35 +137,48 @@ for t, role, pts_col, cols in [
                 hide_index=True
             )
 
-# Post-WC Tabs (4-5) - Specifically for modern metrics 
+# --- TAB 4: POWER HITTERS (Post-WC 2025 ONLY) ---
 with tab4:
     st.subheader("🚀 Power Hitters (Post-WorldCup 2025)")
     st.caption("Boundary dominance metrics since Tournament 29.")
     if not df_modern.empty:
-        df_p = df_modern.sort_values(['Total_6s', 'Boundary_Pct'], ascending=False).head(50)
-        df_p['Player_Link'] = df_p['Player_Name'].apply(make_trajectory_link)
-        st.dataframe(
-            df_p[['Player_Link', 'Team_Name', 'Total_4s', 'Total_6s', 'Boundary_Pct']], 
-            column_config={
-                "Player_Link": link_config,
-                "Boundary_Pct": st.column_config.NumberColumn("Boundary %", format="%.1f%%")
-            }, 
-            use_container_width=True, 
-            hide_index=True
-        )
+        # FILTER: Show only players who have hit at least one boundary (4 or 6)
+        df_p = df_modern[(df_modern['Total_4s'] > 0) | (df_modern['Total_6s'] > 0)].copy()
+        
+        if not df_p.empty:
+            df_p = df_p.sort_values(['Total_6s', 'Boundary_Pct'], ascending=False).head(50)
+            df_p['Player_Link'] = df_p['Player_Name'].apply(make_trajectory_link)
+            st.dataframe(
+                df_p[['Player_Link', 'Team_Name', 'Total_4s', 'Total_6s', 'Boundary_Pct']], 
+                column_config={
+                    "Player_Link": link_config,
+                    "Boundary_Pct": st.column_config.NumberColumn("Boundary %", format="%.1f%%")
+                }, 
+                use_container_width=True, 
+                hide_index=True
+            )
+        else:
+            st.info("No players with boundaries found in this period.")
 
+# --- TAB 5: HARD TO PLAY (Post-WC 2025 ONLY) ---
 with tab5:
     st.subheader("🎯 Hard to Play (Post-WorldCup 2025)")
     st.caption("Bowling pressure and dot ball metrics since Tournament 29.")
     if not df_modern.empty:
-        df_h = df_modern.sort_values(['Dot_Ball_Pct', 'Total_Dots'], ascending=False).head(50)
-        df_h['Player_Link'] = df_h['Player_Name'].apply(make_trajectory_link)
-        st.dataframe(
-            df_h[['Player_Link', 'Team_Name', 'Dot_Ball_Pct', 'Total_Dots']], 
-            column_config={
-                "Player_Link": link_config,
-                "Dot_Ball_Pct": st.column_config.NumberColumn("Dot %", format="%.1f%%")
-            }, 
-            use_container_width=True, 
-            hide_index=True
-        )
+        # FILTER: Show only players with a Dot Ball % greater than 0
+        df_h = df_modern[df_modern['Dot_Ball_Pct'] > 0].copy()
+        
+        if not df_h.empty:
+            df_h = df_h.sort_values(['Dot_Ball_Pct', 'Total_Dots'], ascending=False).head(50)
+            df_h['Player_Link'] = df_h['Player_Name'].apply(make_trajectory_link)
+            st.dataframe(
+                df_h[['Player_Link', 'Team_Name', 'Dot_Ball_Pct', 'Total_Dots']], 
+                column_config={
+                    "Player_Link": link_config,
+                    "Dot_Ball_Pct": st.column_config.NumberColumn("Dot %", format="%.1f%%")
+                }, 
+                use_container_width=True, 
+                hide_index=True
+            )
+        else:
+            st.info("No players with recorded dot balls found in this period.")
