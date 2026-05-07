@@ -2,7 +2,103 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import numpy as np
-import os
+import os, base64
+from cricket_utils import get_db_path, make_trajectory_link,highlight_podium,determine_primary_role
+from cricket_utils import TEAM_ALIASES
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(script_dir)
+ASSETS_DIR = os.path.join(root_dir, "assets")
+
+
+def get_base64_asset(name, type="player", extension="png"):
+    """Converts local image to Base64. extension can be 'png' or 'gif'."""
+    if type == "player":
+        file_name = f"{str(name).replace(' ', '').lower()}.{extension}"
+        default_file = "default_player.jpg"
+    else:
+        full_name = TEAM_ALIASES.get(str(name).upper(), name)
+        file_name = f"{full_name}.png"
+        default_file = "default_team.png"
+
+    file_path = os.path.join(ASSETS_DIR, file_name)
+    
+    # Fallback if the specific extension doesn't exist
+    if not os.path.exists(file_path):
+        # Try falling back to .png if the .gif was requested but missing
+        if extension == "gif":
+            file_name_png = f"{str(name).replace(' ', '').lower()}.png"
+            file_path = os.path.join(ASSETS_DIR, file_name_png)
+        
+        # Final fallback to default icon
+        if not os.path.exists(file_path):
+            file_path = os.path.join(ASSETS_DIR, default_file)
+            if not os.path.exists(file_path):
+                return ""
+
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+            encoded = base64.b64encode(data).decode()
+        # Dynamically set the MIME type based on the file extension
+        mime_type = "image/gif" if file_path.endswith(".gif") else "image/png"
+        return f"data:{mime_type};base64,{encoded}"
+    except Exception:
+        return ""
+    
+def display_hero_card_global(player_data, rank):
+    colors = {1: "#FFD700", 2: "#C0C0C0", 3: "#CD7F32"}
+    border_color = colors.get(rank, "#444")
+    role = player_data.get('Assigned_Role', 'Batsman')
+    global_rank = int(player_data.get('Global_Rank', 0))
+    
+    with st.container(border=True):
+        # st.markdown(f"<h1 style='text-align: center; color: {border_color}; margin-bottom: 0;'>#{rank}</h1>", unsafe_allow_html=True)
+        st.markdown(f"""<div style="display: flex; flex-direction: column;align-items: center;justify-content: center;text-align: center;
+            ">
+                <h1 style="color: {border_color}; margin: 0;line-height: 1;">{rank}</h1>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        # Request the .gif extension (falls back to png in get_base64_asset)
+        icon_base64 = get_base64_asset(player_data['Player_Name'], type="player", extension="gif")
+        
+        if icon_base64:
+            st.image(icon_base64, use_container_width=True)
+        
+        st.markdown(f"<h3 style='text-align: center; margin-top: 0;'>{player_data['Player_Name']}</h3>", unsafe_allow_html=True)
+        
+        # Dynamic Metric Layout based on Role
+        c1, c2, c3 = st.columns(3)
+        
+        if role == "Batsman":
+            with c1:
+                st.metric("Runs", player_data['Total_Runs'])
+            with c2:
+                st.metric("Avg", f"{player_data['Bat_Avg']:.1f}")
+            with c3:
+                st.metric("50+", player_data['Count_50s']) 
+            st.caption(f"SR: {player_data['Bat_SR']:.1f} | MoM: {int(player_data['Total_MoMs'])}")
+            
+        elif role == "Bowler":
+            with c1:
+                st.metric("Wickets", int(player_data['Total_Wickets']))
+            with c2:
+                st.metric("Econ", f"{player_data['Bowl_Econ']:.2f}")
+            with c3:
+                st.metric("3W+", player_data['Count_3W']) 
+            st.caption(f"Avg: {player_data['Bowl_Avg']:.1f} | MoM: {int(player_data['Total_MoMs'])}")
+            
+        elif role == "All-Rounder":
+            with c1:
+                st.metric("Runs", player_data['Total_Runs'])
+            with c2:
+                st.metric("Wkts", int(player_data['Total_Wickets']))
+            with c3:
+                st.metric("MoM", player_data['Total_MoMs'])
+            st.caption(f"Bat Avg: {player_data['Bat_Avg']:.1f} | Bowl Avg: {player_data['Bowl_Avg']:.1f}")
+
+
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Global Rankings", page_icon="🌍", layout="wide")
@@ -10,39 +106,7 @@ st.set_page_config(page_title="Global Rankings", page_icon="🌍", layout="wide"
 st.title("🌍 Global Player Rankings")
 st.markdown("### Performance Leaderboards")
 
-# --- 1. ROBUST PATH FINDER ---
-def get_db_path():
-    """Locates the database file in the root directory relative to the script."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.dirname(script_dir)
-    # The schema specifies 'cricket data.db' but code uses 'cricket_data.db'
-    # Checking for the version that works with your Deep Dive app
-    db_path = os.path.join(root_dir, "cricket_data.db")
-    if os.path.exists(db_path):
-        return db_path
-    return "cricket_data.db" 
-
 DB_FILE = get_db_path()
-
-def make_trajectory_link(player_name):
-    """Generates a query parameter link for the Deep Dive page."""
-    return f"/Player_Trajectory?player={player_name.replace(' ', '+')}"
-
-# --- 2. LOGIC: ROLE ASSIGNMENT ---
-def determine_primary_role(row):
-    """Assigns the primary role based on the highest impact points."""
-    bat, bowl, ar = row['Pts_Batting'], row['Pts_Bowling'], row['Pts_AllRounder']
-    if bat >= bowl and bat >= ar: return "Batsman"
-    elif bowl >= bat and bowl >= ar: return "Bowler"
-    return "All-Rounder"
-
-def highlight_podium(row):
-    gold, silver, bronze = 'background-color: rgba(255, 215, 0, 0.3)', 'background-color: rgba(192, 192, 192, 0.3)', 'background-color: rgba(205, 127, 50, 0.3)'
-    if row['Rank'] == 1: return [gold] * len(row)
-    if row['Rank'] == 2: return [silver] * len(row)
-    if row['Rank'] == 3: return [bronze] * len(row)
-    return [''] * len(row)
-
 
 # --- 3. DATA ENGINE ---
 @st.cache_data
@@ -144,6 +208,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏏 Batsmen", "⚾ Bowlers", "⭐ All-
 link_config = st.column_config.LinkColumn("Player Name", display_text=r"player=(.*)$")
 
 column_configuration = {
+    "Player_Icon": st.column_config.ImageColumn("", width="small"),
     "Rank": st.column_config.NumberColumn("Rank", width="small", format="%d"),
     "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"player=(.*)$", width="large"),
     "Team_Name": st.column_config.Column("Team", width="small"),
@@ -175,45 +240,53 @@ column_configuration = {
     ),
     "Points_Value": st.column_config.NumberColumn("Points", width="small", format="%.1f"),
 }
-
 for t, role, pts_col, cols in [
-    (tab1, 'Batsman', 'Pts_Batting',['Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Count_30s', 'Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
-    
-    (tab2, 'Bowler', 'Pts_Bowling', ['Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_SR', 'Bowl_Econ', 'Count_3W', 'Count_4W', 'Count_5W', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
-    
-    (tab3, 'All-Rounder', 'Pts_AllRounder', ['Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Bowl_Econ', 'Total_MoMs', 'Points_Value', 'Points_Visual'])
+    (tab1, 'Batsman', 'Pts_Batting', ['Player_Icon', 'Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Count_30s', 'Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
+    (tab2, 'Bowler', 'Pts_Bowling', ['Player_Icon', 'Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_SR', 'Bowl_Econ', 'Count_3W', 'Count_4W', 'Count_5W', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
+    (tab3, 'All-Rounder', 'Pts_AllRounder', ['Player_Icon', 'Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Bowl_Econ', 'Total_MoMs', 'Points_Value', 'Points_Visual'])
 ]:
 
     with t:
         if not df_career.empty:
-            # Filter and Sort
+            # 1. Filter, Sort, and Create Base Columns
             df_role = df_career[df_career['Role'] == role].sort_values(pts_col, ascending=False).head(50).copy()
             df_role['Rank'] = range(1, len(df_role) + 1)
+            df_role['Global_Rank'] = df_role['Rank']
+            df_role['Assigned_Role'] = role
             df_role['Player_Link'] = df_role['Player_Name'].apply(make_trajectory_link)
-
-            df_role['Bowl_SR'] = np.where(df_role['Total_Wickets'] > 0, 
-                                          df_role['Total_Runs_Conceded'] / df_role['Total_Wickets'], 
-                                          0.0)
-            df_role['Bowl_Avg'] = np.where(
-                df_role['Total_Wickets'] > 0, 
-                df_role['Total_Runs_Conceded'] / df_role['Total_Wickets'], 
-                0.0
-            )
             
-            # --- Sparkline Logic ---
+            # 2. Generate the Icons (Assigned directly to df_role)
+            # This ensures the 'Player_Icon' column exists before we call the dataframe
+            df_role['Player_Icon'] = df_role['Player_Name'].apply(
+                lambda x: get_base64_asset(x, type="player")
+            )
+
+            # 3. Calculate Performance Metrics
             top_score = df_role[pts_col].max()
-            if top_score > 0:
-                df_role['Points_Visual'] = (df_role[pts_col] / top_score) * 100
-            else:
-                df_role['Points_Visual'] = 0
-                
+            df_role['Points_Visual'] = (df_role[pts_col] / top_score * 100) if top_score > 0 else 0
             df_role['Points_Value'] = df_role[pts_col]
             
-            styled_df = (df_role[cols].style
-                         .apply(highlight_podium, axis=1))
-            
+            # Bowling specific safety checks
+            df_role['Bowl_SR'] = np.where(df_role['Total_Wickets'] > 0, 
+                                        df_role['Total_Runs_Conceded'] / df_role['Total_Wickets'], 0.0)
+            df_role['Bowl_Avg'] = np.where(df_role['Total_Wickets'] > 0, 
+                                          df_role['Total_Runs_Conceded'] / df_role['Total_Wickets'], 0.0)
+
+            # 4. HERO SECTION
+            st.markdown('### 🏆 Top Global Performers')
+            top_3 = df_role.head(3)
+            p_cols = st.columns([1, 1, 1, 1, 1])
+
+            for i in range(len(top_3)):
+                with p_cols[i + 1]:
+                    display_hero_card_global(top_3.iloc[i].to_dict(), i + 1)
+                    
+            st.divider()
+
+            # 5. TABLE SECTION (Cleaned up)
+            st.markdown("#### 📊 Leaderboard")
             st.dataframe(
-                styled_df, 
+                df_role[cols], 
                 column_config=column_configuration, 
                 use_container_width=True, 
                 hide_index=True

@@ -9,6 +9,8 @@ import numpy as np
 import base64
 import os
 
+
+from cricket_utils import highlight_podium, determine_primary_role
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Team Ranking & Form", page_icon="🏆", layout="wide")
 MAX_OVERS = 10 
@@ -17,34 +19,6 @@ MAX_OVERS = 10
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(script_dir)
 ASSETS_DIR = os.path.join(root_dir, "assets")
-
-# def get_base64_asset(name, type="player"):
-#     """Converts local PNG to Base64 string for st.dataframe rendering."""
-#     if type == "player":
-#         # "Abhishek Sharma" -> "abhisheksharma.png"
-#         file_name = f"{str(name).replace(' ', '').lower()}.png"
-#         default_file = "default_player.jpg"
-#     else:
-#         # "IND" -> "India.png" (via your mapping)
-#         full_name = TEAM_ALIASES.get(str(name).upper(), name)
-#         file_name = f"{full_name}.png"
-#         default_file = "default_team.png"
-
-#     file_path = os.path.join(ASSETS_DIR, file_name)
-    
-#     # Fallback to default if file missing
-#     if not os.path.exists(file_path):
-#         file_path = os.path.join(ASSETS_DIR, default_file)
-#         if not os.path.exists(file_path):
-#             return "" # Final safety if even default is missing
-
-#     try:
-#         with open(file_path, "rb") as f:
-#             data = f.read()
-#             encoded = base64.b64encode(data).decode()
-#         return f"data:image/png;base64,{encoded}"
-#     except Exception:
-#         return ""
 
 def get_base64_asset(name, type="player", extension="png"):
     """Converts local image to Base64. extension can be 'png' or 'gif'."""
@@ -299,11 +273,11 @@ def get_rankings_data():
         return df
     finally: conn.close()
 
-def determine_primary_role(row):
-    bat, bowl, ar = row['Pts_Batting'], row['Pts_Bowling'], row['Pts_AllRounder']
-    if bat >= bowl and bat >= ar: return "Batsman"
-    elif bowl >= bat and bowl >= ar: return "Bowler"
-    return "All-Rounder"
+# def determine_primary_role(row):
+#     bat, bowl, ar = row['Pts_Batting'], row['Pts_Bowling'], row['Pts_AllRounder']
+#     if bat >= bowl and bat >= ar: return "Batsman"
+#     elif bowl >= bat and bowl >= ar: return "Bowler"
+#     return "All-Rounder"
 
 TEAM_LEADERBOARD_CONFIG = {
     "Player_Icon": st.column_config.ImageColumn("", width="small"),
@@ -323,6 +297,14 @@ TEAM_LEADERBOARD_CONFIG = {
     "Count_3W": st.column_config.NumberColumn("3W", width="small"),
     "Count_4W": st.column_config.NumberColumn("4W", width="small"),
     "Count_5W": st.column_config.NumberColumn("5W", width="small"),
+    "Points_Visual": st.column_config.ProgressColumn(
+        "Rel. Performance", 
+        help="Performance relative to the Rank 1 player (100%)",
+        format="%.1f%%", # Displays the percentage on the bar
+        min_value=0,
+        max_value=100,
+    ),
+    "Points_Value": st.column_config.NumberColumn("Points", width="small", format="%.1f"),
 }
 
 
@@ -407,14 +389,6 @@ def plot_history_plotly(df, team):
     fig.update_layout(template="plotly_dark", yaxis=dict(title="Rank", autorange="reversed", dtick=1), yaxis2=dict(title="NRR", anchor="x", overlaying="y", side="right", showgrid=False), legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center"))
     st.plotly_chart(fig, use_container_width=True)
 
-def highlight_podium(row):
-    gold, silver, bronze = 'background-color: rgba(255, 215, 0, 0.3)', 'background-color: rgba(192, 192, 192, 0.3)', 'background-color: rgba(205, 127, 50, 0.3)'
-    val = row.get('Rank') if row.get('Rank') is not None else row.get('Team_Rank')
-    
-    if val == 1: return [gold] * len(row)
-    if val == 2: return [silver] * len(row)
-    if val == 3: return [bronze] * len(row)
-    return [''] * len(row)
 
 # --- MAIN APP ---
 def app():
@@ -468,29 +442,27 @@ def app():
                     if not df_b.empty:
                         st.markdown('### 🏆 Top Performers')
                         top_3 = df_b.head(3).copy()
-                        empty_l, p_col2, p_col1, p_col3, empty_r = st.columns([1, 1, 1.2, 1, 1])
-                        with p_col1:
-                            display_hero_card(top_3.iloc[0], 1)
-                        if len(top_3) > 1:
-                            with p_col2: # Rank 2 (Left)
-                                display_hero_card(top_3.iloc[1], 2)
-                                
-                        if len(top_3) > 2:
-                            with p_col3: # Rank 3 (Right)
-                                display_hero_card(top_3.iloc[2], 3)
+                        p_cols = st.columns([1, 1, 1, 1, 1])
+                        for i in range(len(top_3)):
+                            with p_cols[i + 1]:
+                                display_hero_card(top_3.iloc[i].to_dict(), i + 1)
                         
                         st.divider()
 
                         st.markdown("#### 📊 Other Perfomers")
 
-                        df_remaining = df_b.iloc[3:].copy()
+                        top_score = df_b['Pts_Batting'].max()
+                        df_b['Points_Visual'] = (df_b['Pts_Batting'] / top_score * 100) if top_score > 0 else 0
+                        df_b['Points_Value'] = df_b['Pts_Batting']
+
+                        df_remaining = df_b.iloc[:].copy()
 
                         if not df_remaining.empty:
-                            df_remaining['Team_Rank'] = range(4, len(df_remaining) + 4)
+                            df_remaining['Team_Rank'] = range(1, len(df_remaining) + 1)
                             df_remaining['Player_Link'] = df_remaining['Player_Name'].apply(make_trajectory_link)
                             df_remaining['Player_Icon'] = df_remaining['Player_Name'].apply(lambda x: get_base64_asset(x, type="player"))
                             
-                            cols = ['Player_Icon', 'Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Runs', 'Bat_Avg', 'Bat_SR','Count_30s','Count_50s', 'Total_MoMs']
+                            cols = ['Player_Icon', 'Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Runs', 'Bat_Avg', 'Bat_SR','Count_30s','Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']
                             
                             st.dataframe(
                                 df_remaining[cols], 
@@ -506,29 +478,27 @@ def app():
                     if not df_bo.empty:
                         st.markdown('### 🏆 Top Performers')
                         top_3 = df_bo.head(3).copy()
-                        empty_l, p_col2, p_col1, p_col3, empty_r = st.columns([1, 1, 1.2, 1, 1])
-                        with p_col1:
-                            display_hero_card(top_3.iloc[0], 1)
-                        if len(top_3) > 1:
-                            with p_col2: # Rank 2 (Left)
-                                display_hero_card(top_3.iloc[1], 2)
-                                
-                        if len(top_3) > 2:
-                            with p_col3: # Rank 3 (Right)
-                                display_hero_card(top_3.iloc[2], 3)
+                        p_cols = st.columns([1, 1, 1, 1, 1])
+                        for i in range(len(top_3)):
+                            with p_cols[i + 1]:
+                                display_hero_card(top_3.iloc[i].to_dict(), i + 1)
                         
                         st.divider()
 
                         st.markdown("#### 📊 Other Perfomers")
 
-                        df_remaining = df_bo.iloc[3:].copy()
+                        top_score = df_bo['Pts_Bowling'].max()
+                        df_bo['Points_Visual'] = (df_bo['Pts_Bowling'] / top_score * 100) if top_score > 0 else 0
+                        df_bo['Points_Value'] = df_bo['Pts_Bowling']
+
+                        df_remaining = df_bo.iloc[:].copy()
 
                         if not df_remaining.empty:
-                            df_remaining['Team_Rank'] = range(4, len(df_remaining) + 4)
+                            df_remaining['Team_Rank'] = range(1, len(df_remaining) + 1)
                             df_remaining['Player_Link'] = df_remaining['Player_Name'].apply(make_trajectory_link)
                             df_remaining['Player_Icon'] = df_remaining['Player_Name'].apply(lambda x: get_base64_asset(x, type="player"))
                             
-                            cols = ['Player_Icon','Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Wickets', 'Bowl_Avg', 'Bowl_Econ', 'Count_3W', 'Count_4W', 'Count_5W', 'Total_MoMs']
+                            cols = ['Player_Icon','Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Wickets', 'Bowl_Avg', 'Bowl_Econ', 'Count_3W', 'Count_4W', 'Count_5W', 'Total_MoMs', 'Points_Value', 'Points_Visual']
                         
                             st.dataframe(
                                 df_remaining[cols], 
@@ -544,29 +514,28 @@ def app():
                     if not df_ar.empty:
                         st.markdown('### 🏆 Top Performers')
                         top_3 = df_ar.head(3).copy()
-                        empty_l, p_col2, p_col1, p_col3, empty_r = st.columns([1, 1, 1.2, 1, 1])
-                        with p_col1:
-                            display_hero_card(top_3.iloc[0], 1)
-                        if len(top_3) > 1:
-                            with p_col2: # Rank 2 (Left)
-                                display_hero_card(top_3.iloc[1], 2)
-                                
-                        if len(top_3) > 2:
-                            with p_col3: # Rank 3 (Right)
-                                display_hero_card(top_3.iloc[2], 3)
+                        p_cols = st.columns([1, 1, 1, 1, 1])
+
+                        for i in range(len(top_3)):
+                            with p_cols[i + 1]:
+                                display_hero_card(top_3.iloc[i].to_dict(), i + 1)
                         
                         st.divider()
 
                         st.markdown("#### 📊 Other Perfomers")
 
-                        df_remaining = df_ar.iloc[3:].copy()
+                        top_score = df_ar['Pts_AllRounder'].max()
+                        df_ar['Points_Visual'] = (df_ar['Pts_AllRounder'] / top_score * 100) if top_score > 0 else 0
+                        df_ar['Points_Value'] = df_ar['Pts_AllRounder']
+
+                        df_remaining = df_ar.iloc[:].copy()
 
                         if not df_remaining.empty:
-                            df_remaining['Team_Rank'] = range(4, len(df_remaining) + 4)
+                            df_remaining['Team_Rank'] = range(1, len(df_remaining) + 1)
                             df_remaining['Player_Link'] = df_remaining['Player_Name'].apply(make_trajectory_link)
                             df_remaining['Player_Icon'] = df_remaining['Player_Name'].apply(lambda x: get_base64_asset(x, type="player"))
                             
-                            cols = ['Player_Icon','Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Total_MoMs']
+                            cols = ['Player_Icon','Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Total_MoMs', 'Points_Value', 'Points_Visual']
                         
                             st.dataframe(
                                 df_remaining[cols], 
