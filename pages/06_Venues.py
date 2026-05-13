@@ -50,6 +50,8 @@ VENUE_MAP = {
     "auckland": "Auckland Stadium", "auckland stadium": "Auckland Stadium", "aukland oval": "Auckland Stadium",
     "bay oval": "Bay Oval", "eden park": "Eden Park", "hagley oval": "Hagley Oval",
     "seddon park": "Seddon Park", "wellington": "Wellington Park", "wellington park": "Wellington Park",
+    "basin reserve":"Basin reserve", "Basin Reserve":"Basin Reserve",
+    "mclean park":"McLean Park", "Mclean Park": "McLean Park", "Mclean park":"McLean Park",
     # --- PAKISTAN ---
     "gaddafi stadium": "Lahore Gaddafi Stadium", "lahore": "Lahore Gaddafi Stadium",
     "old lahore cricket ground": "Lahore Gaddafi Stadium", "karachi": "Karachi", "multan": "Multan Cricket Stadium",
@@ -98,6 +100,7 @@ VENUE_COORDS = {
     "Sabina Park": [17.9790, -76.7828], "Colombo Stadium": [6.9397, 79.8687],
     "Dhaka Stadium": [23.8069, 90.3636],"Harare Sports Club": [-17.8141, 31.0506],
     "R. Premadasa Stadium": [6.9397, 79.8719],"Galle International Stadium": [6.0314, 80.2163],"Pallekele International Cricket Stadium": [7.2801, 80.7020],
+    "McLean Park":[39.4975, 176.9119],"Basin Reserve":[41.3013, 174.7806],
 }
 
 COUNTRY_CENTERS = {
