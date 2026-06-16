@@ -280,7 +280,7 @@ def get_rankings_data():
 #     return "All-Rounder"
 
 TEAM_LEADERBOARD_CONFIG = {
-    "Player_Icon": st.column_config.ImageColumn("", width="small"),
+    # "Player_Icon": st.column_config.ImageColumn("", width="small"),
     "Team_Rank": st.column_config.NumberColumn("Team Rank", width="small", format="%d"),
     "Global_Rank": st.column_config.NumberColumn("Global Rank", width="small", format="%d"),
     "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"player=(.*)$", width="large"),
@@ -315,54 +315,39 @@ def display_hero_card(player_data, rank):
     global_rank = int(player_data.get('Global_Rank', 0))
     
     with st.container(border=True):
-        # st.markdown(f"<h1 style='text-align: center; color: {border_color}; margin-bottom: 0;'>#{rank}</h1>", unsafe_allow_html=True)
-        st.markdown(f"""<div style="display: flex; flex-direction: column;align-items: center;justify-content: center;text-align: center;
-            ">
-                <h1 style="color: {border_color}; margin: 0;line-height: 1;">{rank}</h1>
-                <p style="font-size: 0.9em;color: gray; margin: 0;padding-top: 2px;
-                ">Global Rank: {global_rank}</p>
+        # Cleaned up header badge without image
+        st.markdown(f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h1 style="color: {border_color}; margin: 0; line-height: 1;">#{rank}</h1>
+                <span style="font-size: 0.85em; color: gray; background-color: #262730; padding: 4px 8px; border-radius: 4px;">
+                    Global Rank: {global_rank}
+                </span>
             </div>
+            <h3 style="margin: 5px 0 15px 0; font-weight: 600;">{player_data['Player_Name']}</h3>
             """, 
             unsafe_allow_html=True
         )
-        # Request the .gif extension (falls back to png in get_base64_asset)
-        icon_base64 = get_base64_asset(player_data['Player_Name'], type="player", extension="gif")
-        
-        if icon_base64:
-            st.image(icon_base64, use_container_width=True)
-        
-        st.markdown(f"<h3 style='text-align: center; margin-top: 0;'>{player_data['Player_Name']}</h3>", unsafe_allow_html=True)
         
         # Dynamic Metric Layout based on Role
         c1, c2, c3 = st.columns(3)
         
         if role == "Batsman":
-            with c1:
-                st.metric("Runs", player_data['Total_Runs'])
-            with c2:
-                st.metric("Avg", f"{player_data['Bat_Avg']:.1f}")
-            with c3:
-                st.metric("50+", player_data['Count_50s']) 
-            st.caption(f"SR: {player_data['Bat_SR']:.1f} | MoM: {int(player_data['Total_MoMs'])}")
+            with c1: st.metric("Runs", player_data['Total_Runs'])
+            with c2: st.metric("Avg", f"{player_data['Bat_Avg']:.1f}")
+            with c3: st.metric("50+", player_data['Count_50s']) 
+            st.markdown(f"**SR:** {player_data['Bat_SR']:.1f} | **MoM:** {int(player_data['Total_MoMs'])}")
             
         elif role == "Bowler":
-            with c1:
-                st.metric("Wickets", int(player_data['Total_Wickets']))
-            with c2:
-                st.metric("Econ", f"{player_data['Bowl_Econ']:.2f}")
-            with c3:
-                st.metric("3W+", player_data['Count_3W']) 
-            st.caption(f"Avg: {player_data['Bowl_Avg']:.1f} | MoM: {int(player_data['Total_MoMs'])}")
+            with c1: st.metric("Wickets", int(player_data['Total_Wickets']))
+            with c2: st.metric("Econ", f"{player_data['Bowl_Econ']:.2f}")
+            with c3: st.metric("3W+", player_data['Count_3W']) 
+            st.markdown(f"**Avg:** {player_data['Bowl_Avg']:.1f} | **MoM:** {int(player_data['Total_MoMs'])}")
             
         elif role == "All-Rounder":
-            with c1:
-                st.metric("Runs", player_data['Total_Runs'])
-            with c2:
-                st.metric("Wkts", int(player_data['Total_Wickets']))
-            with c3:
-                st.metric("MoM", player_data['Total_MoMs'])
-            st.caption(f"Bat Avg: {player_data['Bat_Avg']:.1f} | Bowl Avg: {player_data['Bowl_Avg']:.1f}")
-
+            with c1: st.metric("Runs", player_data['Total_Runs'])
+            with c2: st.metric("Wkts", int(player_data['Total_Wickets']))
+            with c3: st.metric("MoM", player_data['Total_MoMs'])
+            st.markdown(f"**Bat Avg:** {player_data['Bat_Avg']:.1f} | **Bowl Avg:** {player_data['Bowl_Avg']:.1f}")
 def make_trajectory_link(player_name):
     """Generates a query parameter link for the Deep Dive page."""
     return f"/Player_Trajectory?player={player_name.replace(' ', '+')}"
@@ -460,9 +445,9 @@ def app():
                         if not df_remaining.empty:
                             df_remaining['Team_Rank'] = range(1, len(df_remaining) + 1)
                             df_remaining['Player_Link'] = df_remaining['Player_Name'].apply(make_trajectory_link)
-                            df_remaining['Player_Icon'] = df_remaining['Player_Name'].apply(lambda x: get_base64_asset(x, type="player"))
+                            # df_remaining['Player_Icon'] = df_remaining['Player_Name'].apply(lambda x: get_base64_asset(x, type="player"))
                             
-                            cols = ['Player_Icon', 'Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Runs', 'Bat_Avg', 'Bat_SR','Count_30s','Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']
+                            cols = ['Team_Rank', 'Global_Rank', 'Player_Link', 'Mat', 'Total_Runs', 'Bat_Avg', 'Bat_SR','Count_30s','Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']
                             
                             st.dataframe(
                                 df_remaining[cols], 

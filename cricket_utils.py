@@ -1,18 +1,39 @@
 import pandas as pd
 import numpy as np
+import os
 
 
 ########################### GET DB PATH ####################################
+# def get_db_path():
+#     """Locates the database file in the root directory relative to the script."""
+#     script_dir = os.path.dirname(os.path.abspath(__file__))
+#     root_dir = os.path.dirname(script_dir)
+#     # The schema specifies 'cricket data.db' but code uses 'cricket_data.db'
+#     # Checking for the version that works with your Deep Dive app
+#     db_path = os.path.join(root_dir, "cricket_data.db")
+#     if os.path.exists(db_path):
+#         return db_path
+#     return "cricket_data.db" 
+
 def get_db_path():
     """Locates the database file in the root directory relative to the script."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
-    # The schema specifies 'cricket data.db' but code uses 'cricket_data.db'
-    # Checking for the version that works with your Deep Dive app
+ 
     db_path = os.path.join(root_dir, "cricket_data.db")
     if os.path.exists(db_path):
         return db_path
-    return "cricket_data.db" 
+   
+    grandparent_dir = os.path.dirname(root_dir)
+    db_path_upper = os.path.join(grandparent_dir, "cricket_data.db")
+    if os.path.exists(db_path_upper):
+        return db_path_upper
+
+    db_path_local = os.path.join(script_dir, "cricket_data.db")
+    if os.path.exists(db_path_local):
+        return db_path_local
+
+    return db_path
 ########################### LINK PLAYER NAME BETWEEN PAGES ####################################
 def make_trajectory_link(player_name):
     """Generates a query parameter link for the Deep Dive page."""

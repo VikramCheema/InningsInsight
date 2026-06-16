@@ -97,7 +97,7 @@ VENUE_COORDS = {
     "Sabina Park": [17.9790, -76.7828], "Colombo Stadium": [6.9397, 79.8687],
     "Dhaka Stadium": [23.8069, 90.3636],"Harare Sports Club": [-17.8141, 31.0506],
     "R. Premadasa Stadium": [6.9397, 79.8719],"Galle International Stadium": [6.0314, 80.2163],"Pallekele International Cricket Stadium": [7.2801, 80.7020],
-    "McLean Park":[-39.4975, 176.9119],"Basin Reserve":[-41.3013, 174.7806],
+    "McLean Park":[-39.4975, 176.9119],"Basin Reserve":[-41.2730, 174.7850],
 }
 
 COUNTRY_CENTERS = {

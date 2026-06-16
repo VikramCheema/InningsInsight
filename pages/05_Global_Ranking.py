@@ -49,55 +49,39 @@ def display_hero_card_global(player_data, rank):
     colors = {1: "#FFD700", 2: "#C0C0C0", 3: "#CD7F32"}
     border_color = colors.get(rank, "#444")
     role = player_data.get('Assigned_Role', 'Batsman')
-    global_rank = int(player_data.get('Global_Rank', 0))
     
     with st.container(border=True):
-        # st.markdown(f"<h1 style='text-align: center; color: {border_color}; margin-bottom: 0;'>#{rank}</h1>", unsafe_allow_html=True)
-        st.markdown(f"""<div style="display: flex; flex-direction: column;align-items: center;justify-content: center;text-align: center;
-            ">
-                <h1 style="color: {border_color}; margin: 0;line-height: 1;">{rank}</h1>
+        st.markdown(f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h1 style="color: {border_color}; margin: 0; line-height: 1;">#{rank}</h1>
+                <span style="font-size: 0.8em; color: {border_color}; background-color: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 10px; font-weight: bold;">
+                    {player_data['Team_Name']}
+                </span>
             </div>
+            <h3 style="margin: 5px 0 15px 0; font-weight: 600;">{player_data['Player_Name']}</h3>
             """, 
             unsafe_allow_html=True
         )
-        # Request the .gif extension (falls back to png in get_base64_asset)
-        icon_base64 = get_base64_asset(player_data['Player_Name'], type="player", extension="gif")
         
-        if icon_base64:
-            st.image(icon_base64, use_container_width=True)
-        
-        st.markdown(f"<h3 style='text-align: center; margin-top: 0;'>{player_data['Player_Name']}</h3>", unsafe_allow_html=True)
-        
-        # Dynamic Metric Layout based on Role
         c1, c2, c3 = st.columns(3)
         
         if role == "Batsman":
-            with c1:
-                st.metric("Runs", player_data['Total_Runs'])
-            with c2:
-                st.metric("Avg", f"{player_data['Bat_Avg']:.1f}")
-            with c3:
-                st.metric("50+", player_data['Count_50s']) 
-            st.caption(f"SR: {player_data['Bat_SR']:.1f} | MoM: {int(player_data['Total_MoMs'])}")
+            with c1: st.metric("Runs", player_data['Total_Runs'])
+            with c2: st.metric("Avg", f"{player_data['Bat_Avg']:.1f}")
+            with c3: st.metric("50+", player_data['Count_50s']) 
+            st.markdown(f"**SR:** {player_data['Bat_SR']:.1f} | **MoM:** {int(player_data['Total_MoMs'])}")
             
         elif role == "Bowler":
-            with c1:
-                st.metric("Wickets", int(player_data['Total_Wickets']))
-            with c2:
-                st.metric("Econ", f"{player_data['Bowl_Econ']:.2f}")
-            with c3:
-                st.metric("3W+", player_data['Count_3W']) 
-            st.caption(f"Avg: {player_data['Bowl_Avg']:.1f} | MoM: {int(player_data['Total_MoMs'])}")
+            with c1: st.metric("Wickets", int(player_data['Total_Wickets']))
+            with c2: st.metric("Econ", f"{player_data['Bowl_Econ']:.2f}")
+            with c3: st.metric("3W+", player_data['Count_3W']) 
+            st.caption(f"**Avg:** {player_data['Bowl_Avg']:.1f} | **MoM:** {int(player_data['Total_MoMs'])}")
             
         elif role == "All-Rounder":
-            with c1:
-                st.metric("Runs", player_data['Total_Runs'])
-            with c2:
-                st.metric("Wkts", int(player_data['Total_Wickets']))
-            with c3:
-                st.metric("MoM", player_data['Total_MoMs'])
-            st.caption(f"Bat Avg: {player_data['Bat_Avg']:.1f} | Bowl Avg: {player_data['Bowl_Avg']:.1f}")
-
+            with c1: st.metric("Runs", player_data['Total_Runs'])
+            with c2: st.metric("Wkts", int(player_data['Total_Wickets']))
+            with c3: st.metric("MoM", player_data['Total_MoMs'])
+            st.markdown(f"**Bat Avg:** {player_data['Bat_Avg']:.1f} | **Bowl Avg:** {player_data['Bowl_Avg']:.1f}")
 
 
 # --- PAGE CONFIG ---
@@ -208,7 +192,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏏 Batsmen", "⚾ Bowlers", "⭐ All-
 link_config = st.column_config.LinkColumn("Player Name", display_text=r"player=(.*)$")
 
 column_configuration = {
-    "Player_Icon": st.column_config.ImageColumn("", width="small"),
+    # "Player_Icon": st.column_config.ImageColumn("", width="small"),
     "Rank": st.column_config.NumberColumn("Rank", width="small", format="%d"),
     "Player_Link": st.column_config.LinkColumn("Player Name", display_text=r"player=(.*)$", width="large"),
     "Team_Name": st.column_config.Column("Team", width="small"),
@@ -241,9 +225,9 @@ column_configuration = {
     "Points_Value": st.column_config.NumberColumn("Points", width="small", format="%.1f"),
 }
 for t, role, pts_col, cols in [
-    (tab1, 'Batsman', 'Pts_Batting', ['Player_Icon', 'Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Count_30s', 'Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
-    (tab2, 'Bowler', 'Pts_Bowling', ['Player_Icon', 'Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_SR', 'Bowl_Econ', 'Count_3W', 'Count_4W', 'Count_5W', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
-    (tab3, 'All-Rounder', 'Pts_AllRounder', ['Player_Icon', 'Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Bowl_Econ', 'Total_MoMs', 'Points_Value', 'Points_Visual'])
+    (tab1, 'Batsman', 'Pts_Batting', ['Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Bat_Avg', 'Bat_SR', 'Count_30s', 'Count_50s', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
+    (tab2, 'Bowler', 'Pts_Bowling', ['Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Wickets', 'Bowl_Avg', 'Bowl_SR', 'Bowl_Econ', 'Count_3W', 'Count_4W', 'Count_5W', 'Total_MoMs', 'Points_Value', 'Points_Visual']),
+    (tab3, 'All-Rounder', 'Pts_AllRounder', ['Rank', 'Player_Link', 'Team_Name', 'Matches_Played', 'Total_Runs', 'Total_Wickets', 'Bat_Avg', 'Bowl_Avg', 'Bowl_Econ', 'Total_MoMs', 'Points_Value', 'Points_Visual'])
 ]:
 
     with t:
@@ -257,9 +241,9 @@ for t, role, pts_col, cols in [
             
             # 2. Generate the Icons (Assigned directly to df_role)
             # This ensures the 'Player_Icon' column exists before we call the dataframe
-            df_role['Player_Icon'] = df_role['Player_Name'].apply(
-                lambda x: get_base64_asset(x, type="player")
-            )
+            # df_role['Player_Icon'] = df_role['Player_Name'].apply(
+            #     lambda x: get_base64_asset(x, type="player")
+            # )
 
             # 3. Calculate Performance Metrics
             top_score = df_role[pts_col].max()
