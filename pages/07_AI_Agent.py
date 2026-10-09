@@ -37,9 +37,11 @@ GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 
 @st.cache_resource
 def get_llm():
+    api_key = st.secrets.get("GROQ_API_KEY")
+    print(f"Loaded key starting with: {api_key[:6] if api_key else 'NONE'}")
     return ChatGroq(
         model="llama-3.1-8b-instant",
-        # model = "llama-3.3-70b-versatile",
+        # model="llama-3.3-70b-versatile",
         api_key=GROQ_API_KEY,
         temperature=0.0,
         stop_sequences=[";"]
