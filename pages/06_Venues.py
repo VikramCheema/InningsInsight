@@ -61,7 +61,7 @@ VENUE_MAP = {
     # --- WEST INDIES ---
     "brian lara stadium": "Brian Lara Stadium", "daren sammy stadium": "Daren Sammy Stadium",
     "derral sammy stadium": "Daren Sammy Stadium", "kensington oval": "Kensington Oval",
-    "queen's park oval": "Queen's Park Oval", "sabina garden": "Sabina Park", "sabina park": "Sabina Park",
+    "queen's park oval": "Queen's Park Oval", "sabina garden": "Sabina Park", "sabina park": "Sabina Park", "providence staium": "Providence Stadium","sir vivian richards staidum": "Sir Vivian Richards Stadium","warner park": "Warner Park",
     # --- SRI LANKA / BANGLADESH ---
     "colombo stadium": "Colombo Stadium", "dhaka stadium": "Dhaka Stadium", "pallekele international":"Pallekele International", "pallekele":"Pallekele International",
     "r. premadasa stadium":"R. Premadasa Stadium", "premadasa stadium":"R. Premadasa Stadium", "premadasa":"R. Premadasa Stadium",
@@ -97,7 +97,7 @@ VENUE_COORDS = {
     "Sabina Park": [17.9790, -76.7828], "Colombo Stadium": [6.9397, 79.8687],
     "Dhaka Stadium": [23.8069, 90.3636],"Harare Sports Club": [-17.8141, 31.0506],
     "R. Premadasa Stadium": [6.9397, 79.8719],"Galle International Stadium": [6.0314, 80.2163],"Pallekele International Cricket Stadium": [7.2801, 80.7020],
-    "McLean Park":[-39.4975, 176.9119],"Basin Reserve":[-41.2730, 174.7850],
+    "McLean Park":[-39.4975, 176.9119],"Basin Reserve":[-41.2730, 174.7850],"Providence Stadium":[6.754658, -58.173461],"Sir Vivian Richards Stadium":[17.10272,-61.78489],"Warner Park":[17.298611,-62.721944],
 }
 
 COUNTRY_CENTERS = {
