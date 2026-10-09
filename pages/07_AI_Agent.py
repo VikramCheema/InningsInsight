@@ -137,42 +137,6 @@ question = st.text_area(
 col1, col2 = st.columns([1, 5])
 with col1:
     run_button = st.button("Run Analysis", type="primary")
-
-# if run_button:
-#     if not question:
-#         st.warning("Please enter a prompt first.")
-#     else:
-#         with st.spinner("Querying database..."):
-#             try:
-#                 # 1. SQL Generation
-#                 raw_sql = chain.invoke({"question": question})
-#                 cleaned_sql = raw_sql.strip().replace("```sql", "").replace("```", "")
-#                 if not cleaned_sql.endswith(";"): cleaned_sql += ";"
-
-#                 # 2. Results Preview
-#                 with st.expander("View Logic (SQL)"):
-#                     st.code(cleaned_sql, language="sql")
-
-#                 # 3. Data Execution
-#                 with engine.connect() as conn:
-#                     df = pd.read_sql(cleaned_sql, conn)
-
-#                 if df.empty:
-#                     st.info("No records match your criteria.")
-#                 else:
-#                     st.subheader("Results")
-#                     st.dataframe(df, use_container_width=True)
-                    
-#                     # 4. Auto-Chart
-#                     if len(df.columns) >= 2:
-#                         num_cols = df.select_dtypes(include=['number']).columns
-#                         cat_cols = df.select_dtypes(include=['object']).columns
-#                         if not num_cols.empty and not cat_cols.empty:
-#                             st.bar_chart(df.set_index(cat_cols[0])[num_cols[0]])
-
-#             except Exception as e:
-#                 st.error(f"Analysis failed: {e}")
-
 # --- INITIALIZE SESSION STATE ---
 if "analysis_df" not in st.session_state:
     st.session_state.analysis_df = None
