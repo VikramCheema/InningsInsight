@@ -32,15 +32,22 @@ def get_db_engine():
     engine = create_engine(f"sqlite:///{DB_FILE}")
     return SQLDatabase(engine, include_tables=TABLES), engine
 
-# --- LLM SETUP ---
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
 
 @st.cache_resource
 def get_llm():
+    # Fetch key directly
+    api_key = st.secrets.get("GROQ_API_KEY")
+    
+    # Strip any potential leading/trailing whitespaces or quotes from key
+    if api_key:
+        api_key = api_key.strip().strip("'").strip('"')
+
     return ChatGroq(
+        # model="llama-3.3-70b-versatile",
         # model="llama-3.1-8b-instant",
-        model = "llama-3.3-70b-versatile",
-        api_key=GROQ_API_KEY,
+        model = "openai/gpt-oss-120b",
+        api_key=api_key,
         temperature=0.0,
         stop_sequences=[";"]
     )
